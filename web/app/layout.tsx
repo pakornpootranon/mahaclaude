@@ -19,15 +19,13 @@ export default function RootLayout({
       <body>
         <div className="min-h-screen">
           <header className="border-b">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-4">
-                <span className="text-lg font-semibold">newswatch</span>
-                <Nav />
-              </div>
+            <div className="flex items-center gap-4 overflow-x-auto px-4 py-3">
+              <span className="shrink-0 text-lg font-semibold">newswatch</span>
+              <Nav />
             </div>
             <StatusBar />
           </header>
-          <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
+          <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-6">{children}</main>
         </div>
       </body>
     </html>

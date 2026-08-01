@@ -69,9 +69,9 @@ export default function PolymarketOpportunitiesPage() {
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 sm:grid-cols-4">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Discovery</Label>
+          <Label className="text-xs" htmlFor="polymarket-discovery">Discovery</Label>
           <Select value={mode} onValueChange={setMode}>
-            <SelectTrigger>
+            <SelectTrigger id="polymarket-discovery">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -83,18 +83,18 @@ export default function PolymarketOpportunitiesPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Category</Label>
-          <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Economy" />
+          <Label className="text-xs" htmlFor="polymarket-category">Category</Label>
+          <Input id="polymarket-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Economy" />
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Min edge (points)</Label>
-          <Input type="number" min={0} value={minEdge} onChange={(e) => setMinEdge(e.target.value)} placeholder="0" />
+          <Label className="text-xs" htmlFor="polymarket-min-edge">Min edge (points)</Label>
+          <Input id="polymarket-min-edge" type="number" min={0} value={minEdge} onChange={(e) => setMinEdge(e.target.value)} placeholder="0" />
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Min liquidity (USD)</Label>
-          <Input type="number" min={0} value={minLiquidity} onChange={(e) => setMinLiquidity(e.target.value)} placeholder="0" />
+          <Label className="text-xs" htmlFor="polymarket-min-liquidity">Min liquidity (USD)</Label>
+          <Input id="polymarket-min-liquidity" type="number" min={0} value={minLiquidity} onChange={(e) => setMinLiquidity(e.target.value)} placeholder="0" />
         </div>
       </div>
 

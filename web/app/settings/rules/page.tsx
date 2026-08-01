@@ -117,8 +117,9 @@ export default function RulesSettingsPage() {
             onChange={(v) => update({ unconfigured_magnitude_floor: v })}
           />
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Dedup window (hours, 1-336)</Label>
+            <Label className="text-xs" htmlFor="rules-dedup-window">Dedup window (hours, 1-336)</Label>
             <Input
+              id="rules-dedup-window"
               type="number"
               min={1}
               max={336}
@@ -127,8 +128,9 @@ export default function RulesSettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Max recommendations per cycle (1-50)</Label>
+            <Label className="text-xs" htmlFor="rules-max-recs-per-cycle">Max recommendations per cycle (1-50)</Label>
             <Input
+              id="rules-max-recs-per-cycle"
               type="number"
               min={1}
               max={50}
@@ -137,15 +139,17 @@ export default function RulesSettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Quiet tickers (never recommend, comma-separated)</Label>
+            <Label className="text-xs" htmlFor="rules-quiet-tickers">Quiet tickers (never recommend, comma-separated)</Label>
             <Input
+              id="rules-quiet-tickers"
               value={rules.quiet_tickers.join(", ")}
               onChange={(e) => update({ quiet_tickers: e.target.value.split(",").map((t) => t.trim().toUpperCase()).filter(Boolean) })}
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Sector allowlist (empty = all sectors allowed)</Label>
+            <Label className="text-xs" htmlFor="rules-sector-allowlist">Sector allowlist (empty = all sectors allowed)</Label>
             <Input
+              id="rules-sector-allowlist"
               value={rules.sector_scope.allowlist.join(", ")}
               onChange={(e) =>
                 update({
@@ -158,8 +162,9 @@ export default function RulesSettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Sector blocklist (always wins over allowlist)</Label>
+            <Label className="text-xs" htmlFor="rules-sector-blocklist">Sector blocklist (always wins over allowlist)</Label>
             <Input
+              id="rules-sector-blocklist"
               value={rules.sector_scope.blocklist.join(", ")}
               onChange={(e) =>
                 update({

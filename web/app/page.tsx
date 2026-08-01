@@ -86,9 +86,9 @@ export default function ActionFeedPage() {
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 sm:grid-cols-3 md:grid-cols-6">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Market</Label>
+          <Label className="text-xs" htmlFor="feed-market">Market</Label>
           <Select value={market} onValueChange={setMarket}>
-            <SelectTrigger>
+            <SelectTrigger id="feed-market">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -101,9 +101,9 @@ export default function ActionFeedPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Action</Label>
+          <Label className="text-xs" htmlFor="feed-action">Action</Label>
           <Select value={action} onValueChange={setAction}>
-            <SelectTrigger>
+            <SelectTrigger id="feed-action">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -116,9 +116,9 @@ export default function ActionFeedPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Topic</Label>
+          <Label className="text-xs" htmlFor="feed-topic">Topic</Label>
           <Select value={topic} onValueChange={setTopic}>
-            <SelectTrigger>
+            <SelectTrigger id="feed-topic">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -133,8 +133,9 @@ export default function ActionFeedPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Min confidence</Label>
+          <Label className="text-xs" htmlFor="feed-min-confidence">Min confidence</Label>
           <Input
+            id="feed-min-confidence"
             type="number"
             min={0}
             max={1}
@@ -146,13 +147,13 @@ export default function ActionFeedPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">From</Label>
-          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+          <Label className="text-xs" htmlFor="feed-from">From</Label>
+          <Input id="feed-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
 
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">To</Label>
-          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <Label className="text-xs" htmlFor="feed-to">To</Label>
+          <Input id="feed-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
       </div>
 

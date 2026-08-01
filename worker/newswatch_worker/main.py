@@ -6,20 +6,17 @@ APScheduler loop, docs/02-architecture.md §3).
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
 from newswatch_worker.eval import print_drift_report, print_pm_drift_report, run_eval, run_pm_eval
+from newswatch_worker.logging_config import configure_logging
 from newswatch_worker.outcomes import run_outcomes_job
 from newswatch_worker.scheduler import run_forever
 from newswatch_worker.source_tests import process_pending_source_tests
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s %(message)s",
-)
+configure_logging()
 
 
 def cli(argv: list[str] | None = None) -> int:

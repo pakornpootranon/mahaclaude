@@ -26,15 +26,17 @@ interface PolymarketSettings {
 function Field({
   label,
   description,
+  htmlFor,
   children,
 }: {
   label: string;
   description: string;
+  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <Label className="text-xs">{label}</Label>
+      <Label className="text-xs" htmlFor={htmlFor}>{label}</Label>
       <p className="text-xs text-muted-foreground">{description}</p>
       {children}
     </div>
@@ -86,32 +88,36 @@ export default function PolymarketSettingsPage() {
           <CardTitle className="text-sm">Discovery</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Scan top N markets" description="How many top-volume active markets to sweep each cycle.">
+          <Field label="Scan top N markets" description="How many top-volume active markets to sweep each cycle." htmlFor="settings-pm-scan-top-n">
             <Input
+              id="settings-pm-scan-top-n"
               type="number"
               min={1}
               value={settings.scan_top_n}
               onChange={(e) => setSettings({ ...settings, scan_top_n: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Re-estimate hours" description="Don't re-estimate a market's probability more often than this.">
+          <Field label="Re-estimate hours" description="Don't re-estimate a market's probability more often than this." htmlFor="settings-pm-reestimate-hours">
             <Input
+              id="settings-pm-reestimate-hours"
               type="number"
               min={1}
               value={settings.reestimate_hours}
               onChange={(e) => setSettings({ ...settings, reestimate_hours: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Min days to end" description="Skip markets resolving sooner than this - avoids near-certain markets.">
+          <Field label="Min days to end" description="Skip markets resolving sooner than this - avoids near-certain markets." htmlFor="settings-pm-min-days-to-end">
             <Input
+              id="settings-pm-min-days-to-end"
               type="number"
               min={0}
               value={settings.min_days_to_end}
               onChange={(e) => setSettings({ ...settings, min_days_to_end: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Categories (empty = all)" description="Restrict the top-volume scan to these Polymarket categories.">
+          <Field label="Categories (empty = all)" description="Restrict the top-volume scan to these Polymarket categories." htmlFor="settings-pm-categories">
             <Input
+              id="settings-pm-categories"
               value={settings.categories.join(", ")}
               onChange={(e) => setSettings({ ...settings, categories: e.target.value.split(",").map((c) => c.trim()).filter(Boolean) })}
             />
@@ -124,16 +130,18 @@ export default function PolymarketSettingsPage() {
           <CardTitle className="text-sm">Flagging thresholds</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Minimum edge (points)" description="Minimum |estimate - market price| x 100 before a market is flagged.">
+          <Field label="Minimum edge (points)" description="Minimum |estimate - market price| x 100 before a market is flagged." htmlFor="settings-pm-min-edge">
             <Input
+              id="settings-pm-min-edge"
               type="number"
               min={0}
               value={settings.min_edge_points}
               onChange={(e) => setSettings({ ...settings, min_edge_points: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Minimum confidence" description="Minimum LLM confidence (0-1) in its own probability estimate.">
+          <Field label="Minimum confidence" description="Minimum LLM confidence (0-1) in its own probability estimate." htmlFor="settings-pm-min-confidence">
             <Input
+              id="settings-pm-min-confidence"
               type="number"
               min={0}
               max={1}
@@ -142,16 +150,18 @@ export default function PolymarketSettingsPage() {
               onChange={(e) => setSettings({ ...settings, min_confidence: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Minimum liquidity (USD)" description="Markets below this liquidity are never flagged.">
+          <Field label="Minimum liquidity (USD)" description="Markets below this liquidity are never flagged." htmlFor="settings-pm-min-liquidity">
             <Input
+              id="settings-pm-min-liquidity"
               type="number"
               min={0}
               value={settings.min_liquidity_usd}
               onChange={(e) => setSettings({ ...settings, min_liquidity_usd: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Max opportunities per cycle" description="Cap on flagged markets per cycle, highest edge first.">
+          <Field label="Max opportunities per cycle" description="Cap on flagged markets per cycle, highest edge first." htmlFor="settings-pm-max-opportunities">
             <Input
+              id="settings-pm-max-opportunities"
               type="number"
               min={1}
               max={50}
@@ -159,8 +169,9 @@ export default function PolymarketSettingsPage() {
               onChange={(e) => setSettings({ ...settings, max_opportunities_per_cycle: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Price floor" description="Ignore markets with YES price below this (too close to 0).">
+          <Field label="Price floor" description="Ignore markets with YES price below this (too close to 0)." htmlFor="settings-pm-price-floor">
             <Input
+              id="settings-pm-price-floor"
               type="number"
               min={0}
               max={1}
@@ -169,8 +180,9 @@ export default function PolymarketSettingsPage() {
               onChange={(e) => setSettings({ ...settings, price_floor: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Price ceiling" description="Ignore markets with YES price above this (too close to 1).">
+          <Field label="Price ceiling" description="Ignore markets with YES price above this (too close to 1)." htmlFor="settings-pm-price-ceiling">
             <Input
+              id="settings-pm-price-ceiling"
               type="number"
               min={0}
               max={1}
@@ -179,8 +191,9 @@ export default function PolymarketSettingsPage() {
               onChange={(e) => setSettings({ ...settings, price_ceiling: Number(e.target.value) })}
             />
           </Field>
-          <Field label="Dedup window (hours)" description="Same market+side can't re-flag inside this window.">
+          <Field label="Dedup window (hours)" description="Same market+side can't re-flag inside this window." htmlFor="settings-pm-dedup-window">
             <Input
+              id="settings-pm-dedup-window"
               type="number"
               min={1}
               value={settings.dedup_window_hours}

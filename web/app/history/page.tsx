@@ -155,9 +155,9 @@ function RecommendationsTab() {
 
       <div className="flex gap-3 rounded-lg border p-3">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Action</Label>
+          <Label className="text-xs" htmlFor="history-rec-action">Action</Label>
           <Select value={action} onValueChange={setAction}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40" id="history-rec-action">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -169,9 +169,9 @@ function RecommendationsTab() {
           </Select>
         </div>
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Market</Label>
+          <Label className="text-xs" htmlFor="history-rec-market">Market</Label>
           <Select value={market} onValueChange={setMarket}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40" id="history-rec-market">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -348,9 +348,9 @@ function PolymarketTab() {
 
       <div className="flex gap-3 rounded-lg border p-3">
         <div className="flex flex-col gap-1">
-          <Label className="text-xs">Discovery</Label>
+          <Label className="text-xs" htmlFor="history-pm-discovery">Discovery</Label>
           <Select value={discovery} onValueChange={setDiscovery}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-40" id="history-pm-discovery">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

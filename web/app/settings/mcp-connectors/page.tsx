@@ -126,32 +126,33 @@ function ConnectorFormDialog({
         </DialogHeader>
         <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto">
           <div className="flex flex-col gap-1">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bigdata.com (MCP)" />
+            <Label htmlFor="mcp-connector-name">Name</Label>
+            <Input id="mcp-connector-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Bigdata.com (MCP)" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Server URL</Label>
-            <Input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} placeholder="https://mcp.example.com/mcp" />
+            <Label htmlFor="mcp-connector-server-url">Server URL</Label>
+            <Input id="mcp-connector-server-url" value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} placeholder="https://mcp.example.com/mcp" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Tool name</Label>
-            <Input value={toolName} onChange={(e) => setToolName(e.target.value)} placeholder="e.g. bigdata_search" />
+            <Label htmlFor="mcp-connector-tool-name">Tool name</Label>
+            <Input id="mcp-connector-tool-name" value={toolName} onChange={(e) => setToolName(e.target.value)} placeholder="e.g. bigdata_search" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Auth env var name</Label>
-            <Input value={authEnvVar} onChange={(e) => setAuthEnvVar(e.target.value)} placeholder="e.g. BIGDATA_API_KEY" />
+            <Label htmlFor="mcp-connector-auth-env-var">Auth env var name</Label>
+            <Input id="mcp-connector-auth-env-var" value={authEnvVar} onChange={(e) => setAuthEnvVar(e.target.value)} placeholder="e.g. BIGDATA_API_KEY" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Max calls per cycle</Label>
-            <Input type="number" min={1} value={maxCalls} onChange={(e) => setMaxCalls(e.target.value)} />
+            <Label htmlFor="mcp-connector-max-calls">Max calls per cycle</Label>
+            <Input id="mcp-connector-max-calls" type="number" min={1} value={maxCalls} onChange={(e) => setMaxCalls(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>args_template (JSON, raw-JSON escape hatch)</Label>
-            <Textarea className="font-mono text-xs" rows={4} value={argsTemplateText} onChange={(e) => setArgsTemplateText(e.target.value)} />
+            <Label htmlFor="mcp-connector-args-template">args_template (JSON, raw-JSON escape hatch)</Label>
+            <Textarea id="mcp-connector-args-template" className="font-mono text-xs" rows={4} value={argsTemplateText} onChange={(e) => setArgsTemplateText(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>result_mapping (JSON, raw-JSON escape hatch)</Label>
+            <Label htmlFor="mcp-connector-result-mapping">result_mapping (JSON, raw-JSON escape hatch)</Label>
             <Textarea
+              id="mcp-connector-result-mapping"
               className="font-mono text-xs"
               rows={6}
               value={resultMappingText}

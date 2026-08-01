@@ -221,8 +221,9 @@ export default function LlmSettingsPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Monthly budget (USD)</Label>
+            <Label className="text-xs" htmlFor="settings-llm-monthly-budget">Monthly budget (USD)</Label>
             <Input
+              id="settings-llm-monthly-budget"
               type="number"
               min={0}
               step={0.5}
@@ -232,8 +233,9 @@ export default function LlmSettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label className="text-xs">Max items triaged per cycle</Label>
+            <Label className="text-xs" htmlFor="settings-llm-max-items">Max items triaged per cycle</Label>
             <Input
+              id="settings-llm-max-items"
               type="number"
               min={1}
               className="w-40"

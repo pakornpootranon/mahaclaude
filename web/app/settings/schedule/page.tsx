@@ -100,8 +100,9 @@ export default function ScheduleSettingsPage() {
           <CardTitle className="text-sm">Outcomes job</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
-          <Label className="text-xs">Nightly outcomes job time</Label>
+          <Label className="text-xs" htmlFor="settings-schedule-outcomes-time">Nightly outcomes job time</Label>
           <Input
+            id="settings-schedule-outcomes-time"
             className="w-28"
             type="time"
             value={schedule.outcomes_job_time}

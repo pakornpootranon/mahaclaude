@@ -153,24 +153,25 @@ export function QuickAddTopicDialog({ onCreated }: { onCreated: () => void }) {
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shipping disruptions" />
+            <Label htmlFor="quick-add-name">Name</Label>
+            <Input id="quick-add-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Shipping disruptions" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Description</Label>
+            <Label htmlFor="quick-add-description">Description</Label>
             <Textarea
+              id="quick-add-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What events should count, and what does a 'positive' event mean?"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Keywords (comma-separated)</Label>
-            <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="e.g. Suez, Red Sea, freight rates" />
+            <Label htmlFor="quick-add-keywords">Keywords (comma-separated)</Label>
+            <Input id="quick-add-keywords" value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="e.g. Suez, Red Sea, freight rates" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Sensitivity (min confidence to trigger, 0–1)</Label>
-            <Input type="number" min={0} max={1} step={0.05} value={sensitivity} onChange={(e) => setSensitivity(e.target.value)} />
+            <Label htmlFor="quick-add-sensitivity">Sensitivity (min confidence to trigger, 0–1)</Label>
+            <Input id="quick-add-sensitivity" type="number" min={0} max={1} step={0.05} value={sensitivity} onChange={(e) => setSensitivity(e.target.value)} />
           </div>
 
           <div className="flex items-center justify-between">

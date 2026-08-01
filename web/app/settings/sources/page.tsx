@@ -107,13 +107,13 @@ function SourceFormDialog({
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Label htmlFor="settings-sources-name">Name</Label>
+            <Input id="settings-sources-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Type</Label>
+            <Label htmlFor="settings-sources-type">Type</Label>
             <Select value={sourceType} onValueChange={setSourceType}>
-              <SelectTrigger>
+              <SelectTrigger id="settings-sources-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -126,12 +126,12 @@ function SourceFormDialog({
             </Select>
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Config (JSON)</Label>
-            <Textarea className="font-mono text-xs" rows={6} value={configText} onChange={(e) => setConfigText(e.target.value)} />
+            <Label htmlFor="settings-sources-config">Config (JSON)</Label>
+            <Textarea id="settings-sources-config" className="font-mono text-xs" rows={6} value={configText} onChange={(e) => setConfigText(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1">
-            <Label>Poll override (minutes, optional)</Label>
-            <Input type="number" min={1} value={pollOverride} onChange={(e) => setPollOverride(e.target.value)} />
+            <Label htmlFor="settings-sources-poll-override">Poll override (minutes, optional)</Label>
+            <Input id="settings-sources-poll-override" type="number" min={1} value={pollOverride} onChange={(e) => setPollOverride(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <Switch checked={enabled} onCheckedChange={setEnabled} />

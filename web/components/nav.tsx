@@ -18,7 +18,7 @@ export function Nav() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex shrink-0 items-center gap-1">
       {LINKS.map((link) => {
         const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
         return (
@@ -26,7 +26,7 @@ export function Nav() {
             key={link.href}
             href={link.href}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               active ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:text-foreground"
             )}
           >

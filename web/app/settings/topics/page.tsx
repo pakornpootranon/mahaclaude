@@ -140,12 +140,13 @@ function TopicDrawer({ topic, onChanged, onDeleted }: { topic: TopicRow; onChang
   return (
     <CardContent className="flex flex-col gap-3 border-t pt-3">
       <div className="flex flex-col gap-1">
-        <Label className="text-xs">Description</Label>
-        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} onBlur={() => patch({ description })} />
+        <Label className="text-xs" htmlFor="settings-topics-description">Description</Label>
+        <Textarea id="settings-topics-description" value={description} onChange={(e) => setDescription(e.target.value)} onBlur={() => patch({ description })} />
       </div>
       <div className="flex flex-col gap-1">
-        <Label className="text-xs">Keywords (comma-separated)</Label>
+        <Label className="text-xs" htmlFor="settings-topics-keywords">Keywords (comma-separated)</Label>
         <Input
+          id="settings-topics-keywords"
           value={keywordsText}
           onChange={(e) => setKeywordsText(e.target.value)}
           onBlur={() => patch({ keywords: keywordsText.split(",").map((k) => k.trim()).filter(Boolean) })}
