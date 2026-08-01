@@ -1,7 +1,6 @@
-"""Worker entrypoint: `newswatch run-cycle [--dry]` and
+"""Worker entrypoint: `newswatch run-cycle [--dry]`, `newswatch eval`, and
 `newswatch process-source-tests`. The APScheduler-driven scheduled-cycle
-loop (docs/02-architecture.md §3) and `newswatch eval` (docs/04 §10) land in
-later phases.
+loop (docs/02-architecture.md §3) lands in a later phase.
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ import sys
 
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
+from newswatch_worker.eval import print_drift_report, run_eval
 from newswatch_worker.source_tests import process_pending_source_tests
 
 logging.basicConfig(
@@ -39,6 +39,11 @@ def cli(argv: list[str] | None = None) -> int:
         help="Drain pending source_tests rows (Settings 'Test' button handshake, arch §6).",
     )
 
+    subparsers.add_parser(
+        "eval",
+        help="Run golden-fixture triage/analysis drift report against the live API (docs/04 §10).",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run-cycle":
@@ -53,6 +58,16 @@ def cli(argv: list[str] | None = None) -> int:
             count = process_pending_source_tests(conn, tables=tables)
         print(f"processed {count} source test(s)")
         return 0
+
+    if args.command == "eval":
+        engine = get_engine()
+        # Committed like any other cycle's calls: eval calls cost real money
+        # and go through the same budget guard, so the spend ledger should
+        # reflect them (eval.py's module docstring).
+        with engine.begin() as conn:
+            reports = run_eval(conn)
+        all_passed = print_drift_report(reports)
+        return 0 if all_passed else 1
 
     parser.error(f"unknown command: {args.command}")
     return 2

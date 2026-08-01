@@ -31,3 +31,21 @@ def canonicalize_url(url: str) -> str:
 
 def dedupe_key(url: str) -> str:
     return hashlib.sha256(canonicalize_url(url).encode("utf-8")).hexdigest()
+
+
+def recommendation_dedupe_key(
+    *, topic_id: str | None, sector: str, tickers: list[str], action: str, window_bucket: int
+) -> str:
+    """docs/03's recommendations.dedupe_key is `sha256(topic_id|ticker_or_sector|action|window_bucket)`.
+
+    docs/05 §1 describes the window as "same topic+ticker+action", but a
+    recommendation row bundles a whole sector's tickers (one row per rules.py
+    impact-row evaluation, docs/04 §6), so there's no single per-row
+    "ticker" to key on when a row covers several. ticker_or_sector resolves
+    that: the sorted, joined ticker list when present, else the sector name
+    for sector-only rows (FR-A4) and the "unconfigured but significant"
+    WATCH branch (which never carries tickers, docs/04 §6).
+    """
+    ticker_or_sector = ",".join(sorted(tickers)) if tickers else sector
+    raw = f"{topic_id or 'unconfigured'}|{ticker_or_sector}|{action}|{window_bucket}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()

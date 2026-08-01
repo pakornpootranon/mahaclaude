@@ -61,6 +61,21 @@ def _noop_step(ctx: CycleContext) -> None:
     """Placeholder for a not-yet-implemented phase's cycle step."""
 
 
+def _merge_stats(conn: Connection, cycle_id: str, new_stats: dict) -> None:
+    cycles_t = table("cycles")
+    current_stats = conn.execute(select(cycles_t.c.stats).where(cycles_t.c.id == cycle_id)).scalar_one()
+    current_stats.update(new_stats)
+    conn.execute(cycles_t.update().where(cycles_t.c.id == cycle_id).values(stats=current_stats))
+
+
+def _mark_budget_hit(conn: Connection, cycle_id: str) -> None:
+    """budget_hit is sticky for the cycle (docs/02 §8) — never cleared back
+    to false once a step sets it, so SUMMARIZING can see it regardless of
+    which earlier step (TRIAGING or ANALYZING) hit the cap."""
+    cycles_t = table("cycles")
+    conn.execute(cycles_t.update().where(cycles_t.c.id == cycle_id).values(budget_hit=True))
+
+
 def _ingesting_step(ctx: CycleContext) -> None:
     from newswatch_worker.ingest import run_ingestion
 
@@ -70,14 +85,48 @@ def _ingesting_step(ctx: CycleContext) -> None:
         "topics": table("topics"),
     }
     stats = run_ingestion(ctx.conn, tables=tables, cycle_id=ctx.cycle_id)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    logger.info("cycle=%s ingestion stats: %s", ctx.cycle_id, stats)
+
+
+def _triaging_step(ctx: CycleContext) -> None:
+    from newswatch_worker.llm.triage import run_triage
+
+    stats = run_triage(ctx.conn, cycle_id=ctx.cycle_id)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    if stats.get("budget_hit"):
+        _mark_budget_hit(ctx.conn, ctx.cycle_id)
+    logger.info("cycle=%s triage stats: %s", ctx.cycle_id, stats)
+
+
+def _analyzing_step(ctx: CycleContext) -> None:
+    from newswatch_worker.llm.analyze import run_analysis
+
+    stats = run_analysis(ctx.conn, cycle_id=ctx.cycle_id)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    if stats.get("budget_hit"):
+        _mark_budget_hit(ctx.conn, ctx.cycle_id)
+    logger.info("cycle=%s analysis stats: %s", ctx.cycle_id, stats)
+
+
+def _triggering_step(ctx: CycleContext) -> None:
+    from newswatch_worker.rules import apply_rules
+
+    stats = apply_rules(ctx.conn, cycle_id=ctx.cycle_id)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    logger.info("cycle=%s rules stats: %s", ctx.cycle_id, stats)
+
+
+def _summarizing_step(ctx: CycleContext) -> None:
+    from newswatch_worker.llm.digest import run_digest
 
     cycles_t = table("cycles")
-    current_stats = ctx.conn.execute(
-        select(cycles_t.c.stats).where(cycles_t.c.id == ctx.cycle_id)
+    budget_hit = ctx.conn.execute(
+        select(cycles_t.c.budget_hit).where(cycles_t.c.id == ctx.cycle_id)
     ).scalar_one()
-    current_stats.update(stats)
-    ctx.conn.execute(cycles_t.update().where(cycles_t.c.id == ctx.cycle_id).values(stats=current_stats))
-    logger.info("cycle=%s ingestion stats: %s", ctx.cycle_id, stats)
+    stats = run_digest(ctx.conn, cycle_id=ctx.cycle_id, budget_hit=budget_hit)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    logger.info("cycle=%s digest stats: %s", ctx.cycle_id, stats)
 
 
 def _pm_scanning_step(ctx: CycleContext) -> None:
@@ -93,11 +142,11 @@ def _pm_scanning_step(ctx: CycleContext) -> None:
 
 STEP_HANDLERS: dict[str, Callable[[CycleContext], None]] = {
     "INGESTING": _ingesting_step,
-    "TRIAGING": _noop_step,
-    "ANALYZING": _noop_step,
-    "TRIGGERING": _noop_step,
+    "TRIAGING": _triaging_step,
+    "ANALYZING": _analyzing_step,
+    "TRIGGERING": _triggering_step,
     "PM_SCANNING": _pm_scanning_step,
-    "SUMMARIZING": _noop_step,
+    "SUMMARIZING": _summarizing_step,
 }
 
 

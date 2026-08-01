@@ -40,7 +40,11 @@ def get_engine() -> Engine:
 @lru_cache(maxsize=1)
 def get_metadata() -> MetaData:
     metadata = MetaData()
-    metadata.reflect(bind=get_engine())
+    # views=True: docs/03-data-model.md §3 defines topic_board_v, hit_rates_v,
+    # pm_calibration_v, spend_mtd_v as SQL views (not tables) — SQLAlchemy's
+    # reflect() omits views unless asked, so without this the budget guard's
+    # `table("spend_mtd_v")` lookup silently raises KeyError.
+    metadata.reflect(bind=get_engine(), views=True)
     return metadata
 
 

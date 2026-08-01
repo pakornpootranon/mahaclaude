@@ -1,0 +1,282 @@
+{
+  "_comment": "docs/04-llm-pipeline.md §10: 15+ frozen news fixtures with expected triage/analysis outcomes for `make eval`. One file (not one-per-fixture) for easier review; grading tolerances are ±0.15 on magnitude/confidence, strict on relevant/direction/topic matching, per §10. Written against the real seeded topics/mappings (web/prisma/seed.ts) so `make eval` runs against the actual configured DB state exactly as a live cycle would.",
+  "fixtures": [
+    {
+      "id": "oil-01-opec-cut",
+      "input": {
+        "source": "Reuters",
+        "title": "OPEC+ agrees to extend production cuts through Q3",
+        "summary": "OPEC+ ministers agreed on Sunday to extend existing production cuts through the third quarter.",
+        "body_excerpt": "OPEC+ ministers agreed on Sunday to extend existing supply cuts through the third quarter, citing continued demand uncertainty and a desire to defend prices amid softening global growth."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Oil supply shocks"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.55,
+        "confidence": 0.75,
+        "matched_topic_names": ["Oil supply shocks"],
+        "impacts": [
+          { "market": "US", "sector": "Energy producers", "direction": "bullish" },
+          { "market": "US", "sector": "Airlines", "direction": "bearish" }
+        ]
+      }
+    },
+    {
+      "id": "oil-02-hormuz-tension",
+      "input": {
+        "source": "CNBC",
+        "title": "Tensions rise near Strait of Hormuz after tanker incident",
+        "summary": "A tanker incident near the Strait of Hormuz has raised fears of supply disruption.",
+        "body_excerpt": "A tanker was reportedly intercepted near the Strait of Hormuz on Tuesday, raising fears of a broader disruption to one of the world's most critical oil shipping chokepoints. Crude futures jumped on the news."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Oil supply shocks"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.65,
+        "confidence": 0.6,
+        "matched_topic_names": ["Oil supply shocks"],
+        "impacts": [
+          { "market": "US", "sector": "Energy producers", "direction": "bullish" },
+          { "market": "US", "sector": "Airlines", "direction": "bearish" }
+        ]
+      }
+    },
+    {
+      "id": "oil-03-routine-monthly-report",
+      "input": {
+        "source": "MarketWatch",
+        "title": "OPEC monthly report shows output roughly in line with quotas",
+        "summary": "OPEC's routine monthly report showed member output broadly matching agreed quotas.",
+        "body_excerpt": "OPEC's monthly report, published Thursday, showed member states broadly complying with existing production quotas, with only minor deviations. Analysts called the report unremarkable."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Oil supply shocks"] },
+      "expected_analysis": {
+        "event_polarity": 0,
+        "magnitude": 0.2,
+        "confidence": 0.6,
+        "matched_topic_names": ["Oil supply shocks"],
+        "impacts": []
+      }
+    },
+    {
+      "id": "fed-01-surprise-cut",
+      "input": {
+        "source": "Reuters",
+        "title": "Fed delivers surprise 50bp rate cut, cites labor market weakness",
+        "summary": "The Federal Reserve unexpectedly cut rates by 50 basis points, citing a softening labor market.",
+        "body_excerpt": "The Federal Reserve cut its benchmark rate by 50 basis points on Wednesday, a larger move than the 25bp most economists expected, with Chair Powell citing recent softness in labor market data as the primary driver."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Fed rate decisions"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.75,
+        "confidence": 0.85,
+        "matched_topic_names": ["Fed rate decisions"],
+        "impacts": [
+          { "market": "US", "sector": "Broad market", "direction": "bullish" },
+          { "market": "US", "sector": "Banks", "direction": "bearish" },
+          { "market": "US", "sector": "Real estate", "direction": "bullish" }
+        ]
+      }
+    },
+    {
+      "id": "fed-02-hawkish-hold",
+      "input": {
+        "source": "CNBC",
+        "title": "Fed holds rates, Powell signals no cuts until inflation cools further",
+        "summary": "The Fed held rates steady and Powell struck a hawkish tone on the path ahead.",
+        "body_excerpt": "The Federal Reserve held its benchmark rate steady on Wednesday, and Chair Powell said in the press conference that the committee sees no near-term cuts until inflation shows more sustained progress toward the 2% target."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Fed rate decisions"] },
+      "expected_analysis": {
+        "event_polarity": -1,
+        "magnitude": 0.45,
+        "confidence": 0.7,
+        "matched_topic_names": ["Fed rate decisions"],
+        "impacts": [
+          { "market": "US", "sector": "Broad market", "direction": "bearish" },
+          { "market": "US", "sector": "Banks", "direction": "bullish" }
+        ]
+      }
+    },
+    {
+      "id": "fed-03-routine-hold-as-expected",
+      "input": {
+        "source": "MarketWatch",
+        "title": "Fed holds rates steady, matching expectations",
+        "summary": "The Federal Reserve left rates unchanged, exactly as markets had priced in.",
+        "body_excerpt": "The Federal Reserve left its benchmark rate unchanged at Wednesday's meeting, a widely expected outcome that markets had almost fully priced in ahead of time. The statement language was largely unchanged from the prior meeting."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Fed rate decisions"] },
+      "expected_analysis": {
+        "event_polarity": 0,
+        "magnitude": 0.2,
+        "confidence": 0.7,
+        "matched_topic_names": ["Fed rate decisions"],
+        "impacts": []
+      }
+    },
+    {
+      "id": "chip-01-new-export-ban",
+      "input": {
+        "source": "Reuters",
+        "title": "US tightens export restrictions on advanced AI chips to China",
+        "summary": "New US rules further restrict sales of advanced AI chips to Chinese customers.",
+        "body_excerpt": "The US Commerce Department on Monday announced tightened export restrictions on advanced AI chips destined for Chinese customers, closing loopholes used by some manufacturers to route sales through third countries."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Chip export controls / semiconductor cycle"] },
+      "expected_analysis": {
+        "event_polarity": -1,
+        "magnitude": 0.6,
+        "confidence": 0.75,
+        "matched_topic_names": ["Chip export controls / semiconductor cycle"],
+        "impacts": [{ "market": "US", "sector": "Semiconductors", "direction": "bearish" }]
+      }
+    },
+    {
+      "id": "chip-02-restriction-eased",
+      "input": {
+        "source": "CNBC",
+        "title": "US eases some chip export curbs after industry lobbying",
+        "summary": "Washington loosened certain semiconductor export restrictions following industry pressure.",
+        "body_excerpt": "The Commerce Department said Thursday it would ease some export restrictions on mid-tier AI chips following months of lobbying from US semiconductor manufacturers concerned about losing market share to non-US competitors."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Chip export controls / semiconductor cycle"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.5,
+        "confidence": 0.65,
+        "matched_topic_names": ["Chip export controls / semiconductor cycle"],
+        "impacts": [{ "market": "US", "sector": "Semiconductors", "direction": "bullish" }]
+      }
+    },
+    {
+      "id": "china-01-pboc-stimulus",
+      "input": {
+        "source": "Reuters",
+        "title": "PBOC cuts reserve requirement ratio in surprise stimulus move",
+        "summary": "China's central bank cut the reserve requirement ratio to boost lending.",
+        "body_excerpt": "The People's Bank of China cut the reserve requirement ratio for major banks by 50 basis points on Friday, a surprise move aimed at freeing up lending capacity as policymakers look to shore up a slowing economy."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["China stimulus & growth"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.6,
+        "confidence": 0.7,
+        "matched_topic_names": ["China stimulus & growth"],
+        "impacts": [
+          { "market": "US", "sector": "China ADR proxy", "direction": "bullish" },
+          { "market": "TH", "sector": "Thai tourism", "direction": "bullish" }
+        ]
+      }
+    },
+    {
+      "id": "china-02-property-crisis-deepens",
+      "input": {
+        "source": "Bangkok Post",
+        "title": "Major Chinese developer misses bond payment as property crisis deepens",
+        "summary": "A large Chinese property developer missed a scheduled bond payment.",
+        "body_excerpt": "A major Chinese property developer missed a scheduled offshore bond payment on Monday, the latest sign that the sector's debt crisis is deepening despite repeated government intervention over the past two years."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["China stimulus & growth"] },
+      "expected_analysis": {
+        "event_polarity": -1,
+        "magnitude": 0.55,
+        "confidence": 0.65,
+        "matched_topic_names": ["China stimulus & growth"],
+        "impacts": [{ "market": "US", "sector": "China ADR proxy", "direction": "bearish" }]
+      }
+    },
+    {
+      "id": "thai-01-bot-rate-cut",
+      "input": {
+        "source": "The Nation Thailand",
+        "title": "Bank of Thailand cuts policy rate to support growth",
+        "summary": "The BOT cut its policy rate, citing the need to support a sluggish economy.",
+        "body_excerpt": "The Bank of Thailand's Monetary Policy Committee voted to cut the policy rate by 25 basis points on Wednesday, citing sluggish growth and below-target inflation as justification for the easing move."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Thai politics & policy"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.5,
+        "confidence": 0.75,
+        "matched_topic_names": ["Thai politics & policy"],
+        "impacts": [
+          { "market": "TH", "sector": "SET proxy", "direction": "bullish" },
+          { "market": "TH", "sector": "Thai banks", "direction": "bullish" }
+        ]
+      }
+    },
+    {
+      "id": "thai-02-political-instability",
+      "input": {
+        "source": "Bangkok Post",
+        "title": "Thai coalition government faces no-confidence vote amid coalition rift",
+        "summary": "A widening rift in Thailand's ruling coalition has triggered a no-confidence motion.",
+        "body_excerpt": "Thailand's ruling coalition is facing a no-confidence vote after a junior partner threatened to withdraw over a dispute on fiscal policy, raising fresh questions about political stability heading into a critical budget session."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Thai politics & policy"] },
+      "expected_analysis": {
+        "event_polarity": -1,
+        "magnitude": 0.45,
+        "confidence": 0.55,
+        "matched_topic_names": ["Thai politics & policy"],
+        "impacts": [{ "market": "TH", "sector": "SET proxy", "direction": "bearish" }]
+      }
+    },
+    {
+      "id": "unconfigured-01-major-systemic-default",
+      "input": {
+        "source": "Reuters",
+        "title": "Major European bank triggers emergency resolution after liquidity failure",
+        "summary": "Regulators placed a major European bank into emergency resolution overnight.",
+        "body_excerpt": "European regulators placed a major regional bank into emergency resolution overnight after a sudden liquidity shortfall triggered a run on deposits, raising fears of broader contagion across European financial markets."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": [] },
+      "expected_analysis": {
+        "event_polarity": -1,
+        "magnitude": 0.75,
+        "confidence": 0.5,
+        "matched_topic_names": [],
+        "impacts": []
+      }
+    },
+    {
+      "id": "oil-04-thai-refinery-outage",
+      "input": {
+        "source": "Bangkok Post",
+        "title": "Thai state oil major reports refinery outage after OPEC+ output cut ripples through region",
+        "summary": "PTT reported a temporary refinery outage as regional crude allocations tightened following OPEC+'s cut.",
+        "body_excerpt": "PTT reported a temporary outage at one of its refineries on Tuesday, attributing part of the disruption to tighter regional crude allocations following OPEC+'s latest round of supply cuts. Thai energy shares rose on the news."
+      },
+      "expected_triage": { "relevant": true, "matched_topic_names": ["Oil supply shocks"] },
+      "expected_analysis": {
+        "event_polarity": 1,
+        "magnitude": 0.5,
+        "confidence": 0.55,
+        "matched_topic_names": ["Oil supply shocks"],
+        "impacts": [{ "market": "TH", "sector": "Thai energy", "direction": "bullish" }]
+      }
+    },
+    {
+      "id": "irrelevant-01-corporate-pr",
+      "input": {
+        "source": "r/stocks",
+        "title": "5 stocks every young investor should consider in 2026",
+        "summary": "A listicle recommending five stocks for young investors.",
+        "body_excerpt": "In this article we round up five stocks that financial influencers say every young investor should have on their radar this year, based on a mix of growth potential and brand recognition."
+      },
+      "expected_triage": { "relevant": false, "matched_topic_names": [] }
+    },
+    {
+      "id": "irrelevant-02-routine-earnings-recap",
+      "input": {
+        "source": "MarketWatch",
+        "title": "Mid-cap retailer posts in-line quarterly earnings",
+        "summary": "A mid-cap retailer reported earnings roughly in line with analyst estimates.",
+        "body_excerpt": "A mid-cap apparel retailer reported quarterly earnings per share of $0.42, in line with the $0.41 analysts had expected, with revenue also roughly matching consensus. Shares were little changed in after-hours trading."
+      },
+      "expected_triage": { "relevant": false, "matched_topic_names": [] }
+    }
+  ]
+}
