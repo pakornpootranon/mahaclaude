@@ -12,6 +12,10 @@ probability estimate diverges from the market price. Nothing is executed
 automatically: every recommendation and every flagged market is for your
 own review.
 
+**Setting it up on a Mac? Read [`RUN-LOCAL.md`](RUN-LOCAL.md)** — a
+step-by-step runbook covering the repo/branch to use, Homebrew
+prerequisites, the exact commands, and every failure mode worth knowing.
+
 Full spec: [`CLAUDE.md`](CLAUDE.md) and [`docs/`](docs/) (product
 requirements, architecture, data model, LLM pipeline, config schema).
 
