@@ -23,6 +23,7 @@ newswatch = "newswatch_worker.main:cli"
 dev = [
   "pytest>=8.3",
   "pytest-asyncio>=0.24",
+  "uvicorn>=0.30",  # serves the local test MCP server in tests/conftest.py
 ]
 
 [build-system]

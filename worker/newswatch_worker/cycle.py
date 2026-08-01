@@ -5,9 +5,12 @@
                                           (any state) -> FAILED
 
 Each state's step handler must be idempotent so a crashed cycle can be
-re-run safely (PRD acceptance #4). Handlers here are no-ops — ingestion
-(Phase 2), triage/analysis/rules (Phase 3), and Polymarket scanning
-(Phase 5b) replace them without touching the driver loop below.
+re-run safely (PRD acceptance #4). Handlers not yet backed by a real
+implementation are no-ops until their owning phase (triage/analysis/rules:
+Phase 3; Polymarket scanning: Phase 5b) replaces them, without touching the
+driver loop below. `--dry` (main.py) skips calling *any* handler, real or
+not, so it stays a pure state-machine walk regardless of which phases have
+landed.
 
 Crash-resume design: the state transition (UPDATE cycles SET state = ...)
 only commits *after* the step handler for the current state returns. If the
@@ -58,6 +61,25 @@ def _noop_step(ctx: CycleContext) -> None:
     """Placeholder for a not-yet-implemented phase's cycle step."""
 
 
+def _ingesting_step(ctx: CycleContext) -> None:
+    from newswatch_worker.ingest import run_ingestion
+
+    tables = {
+        "sources": table("sources"),
+        "news_items": table("news_items"),
+        "topics": table("topics"),
+    }
+    stats = run_ingestion(ctx.conn, tables=tables, cycle_id=ctx.cycle_id)
+
+    cycles_t = table("cycles")
+    current_stats = ctx.conn.execute(
+        select(cycles_t.c.stats).where(cycles_t.c.id == ctx.cycle_id)
+    ).scalar_one()
+    current_stats.update(stats)
+    ctx.conn.execute(cycles_t.update().where(cycles_t.c.id == ctx.cycle_id).values(stats=current_stats))
+    logger.info("cycle=%s ingestion stats: %s", ctx.cycle_id, stats)
+
+
 def _pm_scanning_step(ctx: CycleContext) -> None:
     settings_t = table("settings")
     row = ctx.conn.execute(
@@ -70,7 +92,7 @@ def _pm_scanning_step(ctx: CycleContext) -> None:
 
 
 STEP_HANDLERS: dict[str, Callable[[CycleContext], None]] = {
-    "INGESTING": _noop_step,
+    "INGESTING": _ingesting_step,
     "TRIAGING": _noop_step,
     "ANALYZING": _noop_step,
     "TRIGGERING": _noop_step,
@@ -135,7 +157,7 @@ def run_cycle(*, dry: bool = False, kind: str = "manual") -> str:
             ctx = CycleContext(cycle_id=cycle_id, conn=conn, dry=dry)
             try:
                 handler = STEP_HANDLERS.get(current)
-                if handler is not None:
+                if handler is not None and not dry:
                     handler(ctx)
             except Exception as exc:  # noqa: BLE001 - cycle-level failure boundary
                 logger.exception("cycle=%s failed in state=%s", cycle_id, current)

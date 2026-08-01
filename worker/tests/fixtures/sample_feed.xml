@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sample Business Wire</title>
+    <link>https://example.com</link>
+    <description>Test fixture feed</description>
+    <item>
+      <title>OPEC+ agrees to extend production cuts through Q3</title>
+      <link>https://example.com/news/opec-cuts?utm_source=newsletter&amp;utm_medium=email</link>
+      <description>OPEC+ ministers agreed on Sunday to extend existing production cuts.</description>
+      <pubDate>Wed, 01 Jul 2026 09:00:00 GMT</pubDate>
+      <author>staff@example.com</author>
+    </item>
+    <item>
+      <title>Fed signals potential rate cut in September meeting</title>
+      <link>https://example.com/news/fed-rate-cut</link>
+      <description>Federal Reserve officials hinted at a possible rate cut.</description>
+      <pubDate>Wed, 01 Jul 2026 08:30:00 GMT</pubDate>
+      <author>staff@example.com</author>
+    </item>
+    <item>
+      <title>Local bakery wins county fair award</title>
+      <link>https://example.com/news/bakery-award</link>
+      <description>A small local bakery took home first prize.</description>
+      <pubDate>Wed, 01 Jul 2026 07:00:00 GMT</pubDate>
+      <author>staff@example.com</author>
+    </item>
+  </channel>
+</rss>

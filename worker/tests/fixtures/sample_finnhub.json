@@ -1,0 +1,24 @@
+[
+  {
+    "category": "top news",
+    "datetime": 1751362800,
+    "headline": "OPEC+ agrees to extend production cuts through Q3",
+    "id": 1,
+    "image": "",
+    "related": "",
+    "source": "Reuters",
+    "summary": "OPEC+ ministers agreed on Sunday to extend existing production cuts.",
+    "url": "https://example.com/news/opec-cuts"
+  },
+  {
+    "category": "top news",
+    "datetime": 1751360400,
+    "headline": "Fed signals potential rate cut in September meeting",
+    "id": 2,
+    "image": "",
+    "related": "",
+    "source": "CNBC",
+    "summary": "Federal Reserve officials hinted at a possible rate cut.",
+    "url": "https://example.com/news/fed-rate-cut"
+  }
+]

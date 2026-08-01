@@ -718,6 +718,7 @@ dependencies = [
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -738,6 +739,7 @@ requires-dist = [
 dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "uvicorn", specifier = ">=0.30" },
 ]
 
 [[package]]

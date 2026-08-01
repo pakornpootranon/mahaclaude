@@ -1,0 +1,26 @@
+{
+  "status": "ok",
+  "totalResults": 2,
+  "articles": [
+    {
+      "source": {"id": "reuters", "name": "Reuters"},
+      "author": "Jane Doe",
+      "title": "OPEC+ agrees to extend production cuts through Q3",
+      "description": "OPEC+ ministers agreed on Sunday to extend existing production cuts.",
+      "url": "https://example.com/news/opec-cuts",
+      "urlToImage": null,
+      "publishedAt": "2026-07-01T09:00:00Z",
+      "content": "OPEC+ ministers agreed on Sunday to extend existing production cuts through Q3 2026."
+    },
+    {
+      "source": {"id": "cnbc", "name": "CNBC"},
+      "author": "John Smith",
+      "title": "Fed signals potential rate cut in September meeting",
+      "description": "Federal Reserve officials hinted at a possible rate cut.",
+      "url": "https://example.com/news/fed-rate-cut",
+      "urlToImage": null,
+      "publishedAt": "2026-07-01T08:30:00Z",
+      "content": "Federal Reserve officials hinted at a possible rate cut in the September meeting."
+    }
+  ]
+}
