@@ -1,6 +1,6 @@
 # PRD — News-to-Action Monitoring Dashboard
 
-**Codename:** `newswatch`
+**Product name:** Mahachai Market Watch (codename `newswatch`)
 **Version:** 1.1 (v1 spec — rev adds LLM/API-key settings, MCP connectors, dashboard topic quick-add & sector scoping, Polymarket opportunities)
 **Owner:** Single user (personal tool)
 **Status:** Approved for build via Claude Code

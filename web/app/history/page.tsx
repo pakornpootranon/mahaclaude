@@ -29,7 +29,11 @@ function fmtNum(value: unknown, digits = 2): string {
 
 function HitIndicator({ hit }: { hit: boolean | null }) {
   if (hit === null) return <span className="text-muted-foreground">—</span>;
-  return hit ? <span className="text-success">✓</span> : <span className="text-destructive">✗</span>;
+  return hit ? (
+    <span className="text-success dark:text-emerald-400">✓</span>
+  ) : (
+    <span className="text-destructive dark:text-red-400">✗</span>
+  );
 }
 
 interface RecommendationOutcome {

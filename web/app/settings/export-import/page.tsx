@@ -27,7 +27,7 @@ function DiffList({ title, entries }: { title: string; entries: DiffEntry[] }) {
       <ul className="mt-1 flex flex-col gap-1 text-xs">
         {entries.map((e) => (
           <li key={e.name}>
-            <span className={e.action === "create" ? "text-success" : "text-amber-600"}>
+            <span className={e.action === "create" ? "text-success dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}>
               {e.action === "create" ? "+ create" : "~ update"}
             </span>{" "}
             {e.name}

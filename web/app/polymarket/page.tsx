@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { AdvisoryDisclaimer } from "@/components/advisory-disclaimer";
 import { PmOpportunityCard, type PmOpportunityListItem } from "@/components/polymarket/opportunity-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,8 +63,6 @@ export default function PolymarketOpportunitiesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Polymarket opportunities</h1>
       </div>
-
-      <AdvisoryDisclaimer />
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 sm:grid-cols-4">
         <div className="flex flex-col gap-1">

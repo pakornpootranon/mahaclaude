@@ -1,4 +1,4 @@
-# Data Model — `newswatch` (Postgres 16)
+# Data Model — Mahachai Market Watch (codename `newswatch`, Postgres 16)
 
 Canonical schema. Implemented in `web/prisma/schema.prisma`; the Python worker reflects the same
 tables via SQLAlchemy. Shown here as annotated SQL for precision. All timestamps `timestamptz`,

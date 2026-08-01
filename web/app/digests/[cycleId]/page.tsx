@@ -76,7 +76,7 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
       </div>
 
       {cycle.error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+        <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive dark:bg-destructive/10 dark:text-red-400">
           {cycle.error}
         </div>
       )}

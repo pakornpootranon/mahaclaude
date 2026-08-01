@@ -227,7 +227,7 @@ export function QuickAddTopicDialog({ onCreated }: { onCreated: () => void }) {
             ))}
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive dark:text-red-400">{error}</p>}
         </div>
 
         <DialogFooter>

@@ -1,4 +1,4 @@
-# Configuration Schema & Seed Config — `newswatch`
+# Configuration Schema & Seed Config — Mahachai Market Watch (codename `newswatch`)
 
 Everything the user can change without touching code (FR-C1..C7). Sources, topics, and mappings
 live in their own tables (03-data-model.md §2.1/2.4/2.5); rules, schedule, and LLM settings live

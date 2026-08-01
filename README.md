@@ -1,4 +1,6 @@
-# newswatch
+# Mahachai Market Watch
+
+*(internal codename `newswatch` — retained for the CLI, Python package, and Docker/DB identifiers throughout this repo)*
 
 A local, single-user financial news-monitoring dashboard. It ingests news a
 few times a day from configurable sources (RSS, Finnhub, NewsAPI, Reddit,

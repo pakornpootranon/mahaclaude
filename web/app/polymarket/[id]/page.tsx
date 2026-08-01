@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AdvisoryDisclaimer } from "@/components/advisory-disclaimer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
@@ -27,8 +26,6 @@ export default async function PmOpportunityDetailPage({ params }: { params: { id
       <Link href="/polymarket" className="text-sm text-muted-foreground hover:underline">
         ← Back to Polymarket opportunities
       </Link>
-
-      <AdvisoryDisclaimer />
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={opp.side === "YES" ? "success" : "destructive"}>{opp.side} looks cheap</Badge>

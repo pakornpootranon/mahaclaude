@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { AdvisoryDisclaimer } from "@/components/advisory-disclaimer";
 import { RecommendationCard, type RecommendationListItem } from "@/components/recommendation-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,8 +80,6 @@ export default function ActionFeedPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Action feed</h1>
       </div>
-
-      <AdvisoryDisclaimer />
 
       <div className="grid grid-cols-2 gap-3 rounded-lg border p-3 sm:grid-cols-3 md:grid-cols-6">
         <div className="flex flex-col gap-1">

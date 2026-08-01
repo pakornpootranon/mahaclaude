@@ -1,4 +1,4 @@
-# Build Plan — `newswatch`
+# Build Plan — Mahachai Market Watch (codename `newswatch`)
 
 Derived from the spec pack (`CLAUDE.md` + `docs/01`–`05`). Each phase is completed, verified
 against its checklist, and committed before the next begins. Ordering follows the dependency

@@ -163,7 +163,7 @@ function ConnectorFormDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} />
             <Label>Enabled</Label>
           </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p className="text-sm text-destructive dark:text-red-400">{error}</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>

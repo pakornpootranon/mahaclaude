@@ -1,4 +1,4 @@
-# LLM Pipeline Spec — `newswatch` (Claude API)
+# LLM Pipeline Spec — Mahachai Market Watch (codename `newswatch`, Claude API)
 
 Two-tier news pipeline + digest synthesis + Polymarket estimation + ad-hoc mapping suggestions.
 All calls via the official `anthropic` Python SDK from the worker (mapping suggestions are the one

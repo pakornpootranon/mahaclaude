@@ -22,10 +22,49 @@
     --destructive-foreground: 210 40% 98%;
     --success: 142 71% 28%;
     --success-foreground: 210 40% 98%;
+    /* "important messages" (advisory/disclaimer banners, notable-but-not-
+       error notices) - a blue distinct from destructive (red, errors) and
+       the Badge "warning" variant (amber, e.g. LLM budget reached). Chosen
+       (#2563eb-equivalent) for >=4.5:1 contrast against --info-foreground,
+       same methodology as the --success contrast fix. */
+    --info: 221 83% 53%;
+    --info-foreground: 210 40% 98%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 222 47% 11%;
     --radius: 0.5rem;
+  }
+
+  /* Dark theme - toggled via a `dark` class on <html> (theme-provider.tsx),
+     not prefers-color-scheme alone, so the user can switch manually.
+     Semantic accent colors (destructive/success/info) are deliberately the
+     SAME in both themes: each is a self-contained chip/banner already
+     checked for >=4.5:1 contrast against its own near-white foreground,
+     independent of the surrounding page background. */
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+    --card: 222 40% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 40% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 18%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --success: 142 71% 28%;
+    --success-foreground: 210 40% 98%;
+    --info: 221 83% 53%;
+    --info-foreground: 210 40% 98%;
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 213 27% 74%;
   }
 }
 

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AdvisoryDisclaimer } from "@/components/advisory-disclaimer";
 import { ActionBadge } from "@/components/action-badge";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,8 +34,6 @@ export default async function RecommendationDetailPage({ params }: { params: { i
       <Link href="/" className="text-sm text-muted-foreground hover:underline">
         ← Back to feed
       </Link>
-
-      <AdvisoryDisclaimer />
 
       <div className="flex flex-wrap items-center gap-2">
         <ActionBadge action={rec.action} />

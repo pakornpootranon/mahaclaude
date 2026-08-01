@@ -1,4 +1,4 @@
-# Architecture — News-to-Action Monitoring Dashboard (`newswatch`)
+# Architecture — News-to-Action Monitoring Dashboard ("Mahachai Market Watch", codename `newswatch`)
 
 Companion to `01-prd.md`. Target: local single-user deployment on macOS via docker-compose.
 

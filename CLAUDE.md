@@ -1,4 +1,4 @@
-# CLAUDE.md — Build Guide for `newswatch`
+# CLAUDE.md — Build Guide for "Mahachai Market Watch" (codename `newswatch`)
 
 > Copy this file to the repo root as `CLAUDE.md` and the rest of the spec pack into `docs/`.
 > This file tells Claude Code what to build, in what order, and how to verify each phase.

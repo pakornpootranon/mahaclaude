@@ -112,7 +112,7 @@ function AddMappingRow({ topicId, onAdded }: { topicId: string; onAdded: () => v
       <Button size="sm" variant="outline" onClick={add} disabled={!sector}>
         + Row
       </Button>
-      {error && <span className="text-destructive">{error}</span>}
+      {error && <span className="text-destructive dark:text-red-400">{error}</span>}
     </div>
   );
 }
@@ -177,7 +177,7 @@ function TopicDrawer({ topic, onChanged, onDeleted }: { topic: TopicRow; onChang
       </div>
 
       <div className="flex justify-end">
-        <Button size="sm" variant="ghost" className="text-destructive" onClick={remove}>
+        <Button size="sm" variant="ghost" className="text-destructive dark:text-red-400" onClick={remove}>
           Delete topic
         </Button>
       </div>

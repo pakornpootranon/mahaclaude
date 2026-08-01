@@ -3,9 +3,11 @@ import "./globals.css";
 
 import { Nav } from "@/components/nav";
 import { StatusBar } from "@/components/status-bar";
+import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata: Metadata = {
-  title: "newswatch",
+  title: "Mahachai Market Watch",
   description: "Advisory news-to-action monitoring dashboard. Not financial advice.",
 };
 
@@ -15,18 +17,30 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Runs before paint so the theme is correct on first render - no
+            flash of the wrong theme when a dark-mode user reloads. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
-        <div className="min-h-screen">
-          <header className="border-b">
-            <div className="flex items-center gap-4 overflow-x-auto px-4 py-3">
-              <span className="shrink-0 text-lg font-semibold">newswatch</span>
-              <Nav />
-            </div>
-            <StatusBar />
-          </header>
-          <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-6">{children}</main>
-        </div>
+        <ThemeProvider>
+          <div className="min-h-screen">
+            <header className="border-b">
+              <div className="flex items-center gap-4 overflow-x-auto px-4 py-3">
+                <span className="shrink-0 text-lg font-semibold">Mahachai Market Watch</span>
+                <Nav />
+                <ThemeToggle />
+              </div>
+              <p className="border-t border-blue-200 bg-blue-50 px-4 py-1.5 text-center text-xs font-medium text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+                Not financial advice — just opinion for your own further research. You are solely
+                responsible for your own investment decisions.
+              </p>
+              <StatusBar />
+            </header>
+            <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-6">{children}</main>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );
