@@ -14,7 +14,6 @@ import os
 import pytest
 from anthropic.types import Message, TextBlock, Usage
 from pydantic import BaseModel
-from sqlalchemy import select
 
 from newswatch_worker.llm import client
 
@@ -75,14 +74,17 @@ def db_conn():
 
     engine = get_engine()
     llm_calls_t = table("llm_calls")
-    with engine.begin() as conn:
-        before_ids = [row.id for row in conn.execute(select(llm_calls_t.c.id)).all()]
 
     with engine.begin() as conn:
         yield conn
 
     with engine.begin() as conn:
-        conn.execute(llm_calls_t.delete().where(llm_calls_t.c.id.notin_(before_ids or [None])))
+        # Delete by this file's test-only purpose values, not a
+        # before/after ID diff: a diff-based cleanup permanently "loses"
+        # any row that ever escapes cleanup once (e.g. a failed run) since
+        # every later test's pre-test snapshot would then treat it as
+        # legitimate pre-existing data and never touch it again.
+        conn.execute(llm_calls_t.delete().where(llm_calls_t.c.purpose == "test"))
 
 
 def test_llm_settings_reads_seeded_config(db_conn):
