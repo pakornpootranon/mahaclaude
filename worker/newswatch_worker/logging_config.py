@@ -1,6 +1,6 @@
 """Structured logging (docs/02-architecture.md §8: 'Worker logs: structured
-JSON lines to stdout (docker logs); errors also land in cycles.error').
-One JSON object per line, easy to grep/parse or pipe through `docker logs
+JSON lines to stdout; errors also land in cycles.error').
+One JSON object per line, easy to grep/parse or pipe through `tail -f
 | jq`. Any `extra={...}` fields a log call passes through are included
 verbatim alongside the standard timestamp/level/logger/message fields.
 """

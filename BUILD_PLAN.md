@@ -9,7 +9,7 @@ hardening.
 **Goal:** runnable monorepo with the canonical schema and a walkable (no-op) cycle state machine.
 
 - Repo layout per `docs/02` §2: `web/` (Next.js 14+ App Router, TS, Tailwind, shadcn/ui, Prisma),
-  `worker/` (Python 3.12, uv, APScheduler, SQLAlchemy), `docker-compose.yml` (db + web + worker),
+  `worker/` (Python 3.12, uv, APScheduler, SQLAlchemy), `scripts/setup.sh` (native Postgres + npm),
   Makefile, `.env.example`.
 - Prisma schema implementing `docs/03` exactly (sources, cycles, news_items, topics, mappings,
   analyses, recommendations, outcomes, digests, settings, secrets, llm_calls, source_tests,

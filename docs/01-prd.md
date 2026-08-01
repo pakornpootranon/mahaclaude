@@ -123,7 +123,7 @@ All of the following editable in the dashboard Settings UI, persisted to Postgre
 
 ## 8. Acceptance criteria (v1 done means)
 
-1. `docker compose up` on the user's Mac brings up dashboard + worker + Postgres; dashboard on `http://localhost:3000`.
+1. `make setup` on the user's Mac prepares the database and dependencies; `make dev-web` serves the dashboard on `http://localhost:3000`.
 2. With seed config (see `05-config-schema.md`), a manual cycle run ingests from ≥3 live free sources, produces analyses, and renders ≥1 digest with recommendations end-to-end.
 3. Adding a new watch topic + mapping in the UI affects the next cycle without restart.
 4. Killing the worker mid-cycle and re-running leaves no duplicate recommendations.

@@ -1,6 +1,6 @@
 # Mahachai Market Watch
 
-*(internal codename `newswatch` — retained for the CLI, Python package, and Docker/DB identifiers throughout this repo)*
+*(internal codename `newswatch` — retained for the CLI, Python package, and database identifiers throughout this repo)*
 
 A local, single-user financial news-monitoring dashboard. It ingests news a
 few times a day from configurable sources (RSS, Finnhub, NewsAPI, Reddit,
@@ -17,12 +17,14 @@ requirements, architecture, data model, LLM pipeline, config schema).
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or
-  compatible Docker + Compose v2)
-- Node.js 20+ and npm (for `make dev-web`, `make seed`, `make migrate`,
-  `make test`)
+Everything runs directly on your machine — no Docker, no containers.
+
+- Node.js 20+ and npm — the dashboard, migrations, and seed
+- Postgres 16 running locally (macOS: `brew install postgresql@16 &&
+  brew services start postgresql@16`)
 - Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installation/)
-  (for `make dev-worker`, `make test`, `make eval`)
+  — only for the worker (`make serve`, `make test`, `make eval`). Skip it if
+  you just want to browse the dashboard.
 
 ## Setup from zero
 
@@ -42,24 +44,30 @@ requirements, architecture, data model, LLM pipeline, config schema).
    # optional keys above
    ```
 
-3. **Bring everything up**:
+3. **Run setup** — creates the Postgres role and database, installs npm
+   dependencies, applies migrations, and seeds the starter config (sources,
+   watch topics, mappings, default settings — see
+   [`docs/05-config-schema.md`](docs/05-config-schema.md) §6):
    ```bash
-   make up
+   make setup
    ```
-   This starts Postgres, the worker (long-running: scheduled cycles +
-   nightly outcomes job), and the web dashboard at
-   [http://localhost:3000](http://localhost:3000). The web container runs
-   Prisma migrations automatically on start.
+   Re-running it is safe: it creates only what's missing and the seed
+   upserts. To wipe the database and start over, use `make reset`.
 
-4. **Seed the starter config** (sources, watch topics, mappings, default
-   settings — see [`docs/05-config-schema.md`](docs/05-config-schema.md) §6):
+4. **Start the dashboard**:
    ```bash
-   make seed
+   make dev-web
    ```
+   Then open [http://localhost:3000](http://localhost:3000).
 
-5. Open [http://localhost:3000](http://localhost:3000). The dashboard is
-   empty until the first digest cycle runs — either wait for the schedule
-   in Settings → Schedule, or click **Run cycle now** in the header.
+5. **Start the scheduler** in a second terminal — optional, and only needed
+   for cycles to run on a schedule:
+   ```bash
+   make serve
+   ```
+   The dashboard is empty until the first digest cycle runs — either wait
+   for the schedule in Settings → Schedule, or click **Run cycle now** in
+   the header.
 
 You can also rotate/enter the Claude API key from the UI instead of `.env`:
 Settings → LLM. The DB-stored key always wins over the `.env` fallback and
@@ -68,25 +76,38 @@ is never rendered unmasked or included in a config export.
 ## Everyday commands
 
 ```
-make up            # docker compose up -d (db + web + worker)
-make down           # docker compose down
-make dev-web        # next dev against the compose db (hot reload)
-make dev-worker      # worker run-once cycle against the compose db
-make migrate         # prisma migrate dev (schema changes, local dev)
-make seed            # prisma db seed (idempotent - safe to re-run)
-make test             # web unit tests + worker pytest
-make eval             # worker golden-fixture LLM eval against the live API
-make backup            # pg_dump + config export -> ./backups/
+make setup         # create db role/database, npm install, migrate, seed
+make reset         # same, but drop the database first (destroys all data)
+make dev-web       # next dev on http://localhost:3000 (hot reload)
+make serve         # the worker's long-running scheduler loop
+make dev-worker    # worker run-once cycle
+make outcomes      # run the nightly outcomes job once
+make migrate       # prisma migrate dev (schema changes, local dev)
+make seed          # prisma db seed (idempotent - safe to re-run)
+make test          # web unit tests + worker pytest
+make eval          # worker golden-fixture LLM eval against the live API
+make backup        # pg_dump + config export -> ./backups/
 ```
 
-Worker CLI (inside the worker container, or locally via `cd worker && uv run newswatch <command>`):
+All targets read `DATABASE_URL`, defaulting to
+`postgresql://newswatch:newswatch@localhost:5432/newswatch`. Export your own
+before calling `make` to point at a different Postgres.
+
+> **If you run the Prisma CLI by hand**, export `DATABASE_URL` in your shell
+> first. This repo ships a `web/prisma.config.ts`, and its presence makes the
+> Prisma CLI skip loading `.env` — so `npx prisma migrate deploy` fails with
+> `Environment variable not found: DATABASE_URL` even when `web/.env` is
+> correct. The Next.js dev server reads `.env` normally; this affects only
+> the `npx prisma` commands. The Makefile exports it for you.
+
+Worker CLI (`cd worker && uv run newswatch <command>`):
 
 ```
 newswatch run-cycle [--dry]     # run one digest cycle to completion (or resume an incomplete one)
 newswatch run-outcomes          # run the nightly outcomes job once (normally on its own 07:30 ICT schedule)
 newswatch process-source-tests  # drain pending Settings "Test" button requests
 newswatch eval                  # golden-fixture triage/analysis/pm-estimate drift report
-newswatch serve                 # the long-running loop (what the worker container actually runs)
+newswatch serve                 # the long-running loop (scheduled cycles + nightly outcomes)
 ```
 
 ## Architecture at a glance
@@ -125,8 +146,8 @@ noted as such.
 
 ## PRD acceptance criteria (`docs/01-prd.md` §8)
 
-1. ✅ **`docker compose up` brings up dashboard + worker + Postgres; dashboard on `http://localhost:3000`.**
-   Verified in Phase 1: `make up && make seed`, then a dry cycle walked the full state machine to `DONE`. `web` binds `127.0.0.1:3000` only (docs/01 §10).
+1. ✅ **`make setup` brings up dashboard + worker against local Postgres; dashboard on `http://localhost:3000`.**
+   Verified in Phase 1: `make setup`, then a dry cycle walked the full state machine to `DONE`. `next dev` binds `127.0.0.1:3000` only (docs/01 §10).
 
 2. ✅ **With seed config, a manual cycle run ingests from ≥3 live free sources, produces analyses, and renders ≥1 digest with recommendations end-to-end.**
    Ingestion verified for real in Phase 2 against ≥3 seeded sources (RSS/Finnhub/Reddit), with a re-run producing zero duplicates. The LLM half of the pipeline (triage → analysis → digest) was verified end-to-end with a fake Anthropic client (no live key in the build sandbox — see note above); the resulting recommendation carries a complete, verified provenance chain back through its analysis JSON to the source news item(s).

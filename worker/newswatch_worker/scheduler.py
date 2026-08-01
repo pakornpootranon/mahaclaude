@@ -5,7 +5,7 @@ check every minute so schedule edits need no restart (FR-C5). Manual runs
 same as `source_tests` requests (arch §6).
 
 Single entrypoint: `newswatch serve` (main.py). Replaces the Phase 1
-placeholder Dockerfile CMD (`run-cycle` once and exit) now that there's a
+placeholder entrypoint (`run-cycle` once and exit) now that there's a
 real cycle worth scheduling.
 """
 

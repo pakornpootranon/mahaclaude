@@ -31,16 +31,16 @@ propose the fix in the PR/commit message rather than silently diverging.
 
 - `web/`: Next.js 14+ App Router, TypeScript, Tailwind, shadcn/ui, Prisma → Postgres.
 - `worker/`: Python 3.12, uv, APScheduler, httpx, anthropic SDK, `mcp` SDK (client), SQLAlchemy (reflect Prisma's tables), yfinance, feedparser.
-- Postgres 16 in docker-compose; web binds 127.0.0.1:3000.
+- Postgres 16 running natively on the host (no containers); web binds 127.0.0.1:3000.
 - Secrets in `.env` (`ANTHROPIC_API_KEY` fallback, `FINNHUB_KEY`, `NEWSAPI_KEY`, `BIGDATA_API_KEY`, `DATABASE_URL`) — with ONE exception: the Claude API key is also settable via the UI into the `secrets` table (docs/02 §9); DB value wins, masked display only, excluded from export/logs.
 - Look up **current** Claude model IDs, prices, and extended-thinking support when implementing `settings['llm']` defaults; verify the Polymarket Gamma API endpoints and the Bigdata.com MCP tool shape at implementation time.
 
 ## Commands (implement via Makefile early in Phase 1)
 
 ```
-make up            # docker compose up -d (db + web + worker)
-make dev-web       # next dev against compose db
-make dev-worker    # worker run-once cycle against compose db (worker CLI: `newswatch run-cycle`)
+make setup         # create db role/database, npm install, migrate, seed
+make dev-web       # next dev against local Postgres
+make dev-worker    # worker run-once cycle against local Postgres (worker CLI: `newswatch run-cycle`)
 make migrate       # prisma migrate dev
 make seed          # prisma db seed (docs/05 §6)
 make test          # web unit tests + worker pytest
@@ -51,7 +51,7 @@ make backup        # pg_dump + config export → ./backups/
 ## Build phases — complete, verify, and commit each phase before the next
 
 ### Phase 1 — Skeleton & data layer
-- Repo layout per `docs/02-architecture.md` §2; docker-compose (db+web+worker); Makefile; `.env.example`.
+- Repo layout per `docs/02-architecture.md` §2; `scripts/setup.sh` (native Postgres + npm); Makefile; `.env.example`.
 - Prisma schema implementing `docs/03-data-model.md` exactly; migrations; seed script with the full
   seed config from `docs/05-config-schema.md` §6 (verify feed URLs live; substitute dead ones and log it).
 - Worker connects via SQLAlchemy reflection; `newswatch run-cycle --dry` creates a cycle row and walks

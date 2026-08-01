@@ -1,6 +1,6 @@
 # Architecture — News-to-Action Monitoring Dashboard ("Mahachai Market Watch", codename `newswatch`)
 
-Companion to `01-prd.md`. Target: local single-user deployment on macOS via docker-compose.
+Companion to `01-prd.md`. Target: local single-user deployment on macOS, run natively (Node + Python + Postgres, no containers).
 
 ---
 
@@ -8,7 +8,7 @@ Companion to `01-prd.md`. Target: local single-user deployment on macOS via dock
 
 ```
                         ┌────────────────────────────────────────────┐
-                        │                docker-compose               │
+                        │              local machine (macOS)          │
                         │                                            │
   RSS feeds ──────┐     │  ┌──────────────┐      ┌────────────────┐  │
   Finnhub API ────┤     │  │  worker (py)  │      │  web (Next.js) │  │
@@ -31,7 +31,7 @@ Companion to `01-prd.md`. Target: local single-user deployment on macOS via dock
                                http://localhost:3000 (user)
 ```
 
-Two applications, one database, one compose file:
+Two applications and one database, all run directly on the host:
 
 | Service | Tech | Responsibility |
 |---|---|---|
@@ -47,7 +47,7 @@ at 3 cycles/day.
 
 ```
 newswatch/
-├── docker-compose.yml
+├── scripts/setup.sh
 ├── .env.example              # ANTHROPIC_API_KEY, FINNHUB_KEY, NEWSAPI_KEY, DATABASE_URL
 ├── CLAUDE.md                 # from 00-CLAUDE.md in this spec pack
 ├── docs/                     # this spec pack, verbatim
@@ -203,7 +203,7 @@ so the PM outcomes tab can score calibration (estimate vs actual). Data in `pm_o
 - Every Claude call logs to `llm_calls` (model, tokens in/out, computed USD cost, cycle_id, purpose).
 - Before each call: if month-to-date spend ≥ cap → raise `BudgetExceeded`; cycle skips remaining
   analysis, digest is generated rule-only with a "budget reached" banner flag (PRD acceptance #6).
-- Worker logs: structured JSON lines to stdout (docker logs); errors also land in `cycles.error`.
+- Worker logs: structured JSON lines to stdout; errors also land in `cycles.error`.
 
 ## 9. Configuration & secrets
 
@@ -215,13 +215,13 @@ so the PM outcomes tab can score calibration (estimate vs actual). Data in `pm_o
 - All other secrets (Finnhub, NewsAPI, MCP connector tokens like `BIGDATA_API_KEY`) remain in
   `.env` only — never in the DB, never rendered back to the UI (Settings shows `set/unset`
   status). All behavioral config lives in Postgres (FR-C).
-- `docker-compose.yml` mounts a named volume for Postgres data; `make backup` dumps DB +
+- Postgres keeps its own data directory on the host; `make backup` dumps DB +
   config-export JSON to `./backups/`.
 
 ## 10. Security posture
 
-Localhost-only tool: `web` binds `127.0.0.1:3000`, Postgres not published to host network
-(compose-internal only, except a commented-out port mapping for debugging). No auth by design
+Localhost-only tool: `web` binds `127.0.0.1:3000`, and Postgres listens on `localhost` only
+(the stock `listen_addresses = 'localhost'` default). No auth by design
 (approved). If the user ever exposes it, adding basic-auth middleware in Next.js is the v2 path.
 
 ## 11. Deferred-but-designed-for (explicit non-goals with hooks)
