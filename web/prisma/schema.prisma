@@ -1,0 +1,373 @@
+// Canonical schema for `newswatch`, implementing docs/03-data-model.md §2 verbatim.
+// Table/column names are snake_case (via @@map/@map) so the Python worker can
+// reflect these same tables with SQLAlchemy (docs/02-architecture.md §1).
+//
+// One deliberate deviation from docs/03-data-model.md §2.6: `analysis_topics`
+// is specified with `PRIMARY KEY (analysis_id, topic_id)` where `topic_id` is
+// nullable ("NULL = unconfigured but significant flag"). Postgres primary key
+// columns are implicitly NOT NULL, so a composite PK with a nullable column is
+// not representable. Fixed here with a surrogate `id` PK plus a regular
+// UNIQUE(analysis_id, topic_id) constraint, which preserves the idempotent
+// upsert behavior the spec needs for configured-topic matches.
+//
+// Second deviation: `sources.name` gains a UNIQUE constraint not present in
+// docs/03-data-model.md §2.1. The spec elsewhere requires idempotent seeding
+// and upsert-by-name config import (docs/05 §5) but never defines a dedupe
+// key for sources — topics.name already has one; sources needed the same
+// treatment to make `make seed` re-runnable and CRUD-by-name workable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 2.1 sources — configured news inputs (FR-C1)
+model Source {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String    @unique
+  sourceType           String    @map("source_type")
+  config               Json
+  enabled              Boolean   @default(true)
+  pollOverrideMinutes  Int?      @map("poll_override_minutes")
+  language             String    @default("en")
+  health               String    @default("ok")
+  consecutiveFailures  Int       @default(0) @map("consecutive_failures")
+  lastSuccessAt        DateTime? @map("last_success_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+
+  newsItems   NewsItem[]
+  sourceTests SourceTest[]
+
+  @@map("sources")
+}
+
+/// 2.2 cycles — one digest run
+model Cycle {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduledFor     DateTime  @map("scheduled_for") @db.Timestamptz
+  kind             String    @default("scheduled")
+  requestedManual  Boolean   @default(false) @map("requested_manual")
+  state            String    @default("PENDING")
+  stats            Json      @default("{}")
+  budgetHit        Boolean   @default(false) @map("budget_hit")
+  error            String?
+  startedAt        DateTime? @map("started_at") @db.Timestamptz
+  finishedAt       DateTime? @map("finished_at") @db.Timestamptz
+
+  newsItems       NewsItem[]
+  analyses        Analysis[]
+  recommendations Recommendation[]
+  digest          Digest?
+  llmCalls        LlmCall[]
+  pmOpportunities PmOpportunity[]
+
+  @@index([scheduledFor(sort: Desc)])
+  @@map("cycles")
+}
+
+/// 2.3 news_items
+model NewsItem {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId       String    @map("source_id") @db.Uuid
+  cycleId        String?   @map("cycle_id") @db.Uuid
+  dedupeKey      String    @unique @map("dedupe_key")
+  storyKey       String?   @map("story_key")
+  url            String
+  title          String
+  summary        String?
+  bodyExcerpt    String?   @map("body_excerpt")
+  language       String    @default("en")
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz
+  fetchedAt      DateTime  @default(now()) @map("fetched_at") @db.Timestamptz
+  analysisHints  Json?     @map("analysis_hints")
+  triageStatus   String    @default("pending") @map("triage_status")
+
+  source                 Source                 @relation(fields: [sourceId], references: [id])
+  cycle                  Cycle?                 @relation(fields: [cycleId], references: [id])
+  primaryForAnalyses     Analysis[]             @relation("AnalysisPrimaryItem")
+  recommendationSources  RecommendationSource[]
+
+  @@index([storyKey])
+  @@index([publishedAt(sort: Desc)])
+  @@map("news_items")
+}
+
+/// 2.4 topics — watch topics (FR-C2)
+model Topic {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique
+  description String
+  keywords    String[] @default([])
+  sensitivity Decimal  @default(0.70) @db.Decimal(3, 2)
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  mappings        Mapping[]
+  analysisTopics  AnalysisTopic[]
+  recommendations Recommendation[]
+
+  @@map("topics")
+}
+
+/// 2.5 mappings — topic -> sector/ticker impact rows (FR-C3)
+model Mapping {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  topicId      String   @map("topic_id") @db.Uuid
+  market       String
+  sector       String
+  tickers      String[] @default([])
+  polarity     Int
+  enabled      Boolean  @default(true)
+  suggestedBy  String   @default("user") @map("suggested_by")
+  note         String?
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([topicId, market, sector])
+  @@map("mappings")
+}
+
+/// 2.6 analyses — LLM tier-2 output per storyline (FR-A1/A2)
+model Analysis {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId        String   @map("cycle_id") @db.Uuid
+  storyKey       String   @map("story_key")
+  primaryItemId  String   @map("primary_item_id") @db.Uuid
+  promptVersion  String   @map("prompt_version")
+  model          String
+  result         Json
+  eventPolarity  Int      @map("event_polarity")
+  magnitude      Decimal  @db.Decimal(3, 2)
+  confidence     Decimal  @db.Decimal(3, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle                 Cycle                  @relation(fields: [cycleId], references: [id])
+  primaryItem           NewsItem               @relation("AnalysisPrimaryItem", fields: [primaryItemId], references: [id])
+  analysisTopics        AnalysisTopic[]
+  recommendations       Recommendation[]
+  pmOpportunityAnalyses PmOpportunityAnalysis[]
+
+  @@unique([storyKey, promptVersion])
+  @@map("analyses")
+}
+
+/// which watch topics an analysis matched. topic_id NULL = "unconfigured but
+/// significant" flag (FR-A2). See file-header note on the surrogate PK.
+model AnalysisTopic {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  analysisId    String  @map("analysis_id") @db.Uuid
+  topicId       String? @map("topic_id") @db.Uuid
+  matchStrength Decimal @map("match_strength") @db.Decimal(3, 2)
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  topic    Topic?   @relation(fields: [topicId], references: [id])
+
+  @@unique([analysisId, topicId])
+  @@map("analysis_topics")
+}
+
+/// 2.7 recommendations (FR-A3/A4/A5)
+model Recommendation {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId     String   @map("cycle_id") @db.Uuid
+  analysisId  String   @map("analysis_id") @db.Uuid
+  topicId     String?  @map("topic_id") @db.Uuid
+  dedupeKey   String   @unique @map("dedupe_key")
+  action      String
+  market      String
+  sector      String
+  tickers     String[] @default([])
+  confidence  Decimal  @db.Decimal(3, 2)
+  reasoning   String
+  ruleTrace   Json     @map("rule_trace")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle    Cycle                  @relation(fields: [cycleId], references: [id])
+  analysis Analysis               @relation(fields: [analysisId], references: [id])
+  topic    Topic?                 @relation(fields: [topicId], references: [id])
+  sources  RecommendationSource[]
+  outcome  Outcome?
+
+  @@index([createdAt(sort: Desc)])
+  @@map("recommendations")
+}
+
+/// provenance: all storyline items behind a recommendation
+model RecommendationSource {
+  recommendationId String @map("recommendation_id") @db.Uuid
+  newsItemId       String @map("news_item_id") @db.Uuid
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  newsItem       NewsItem       @relation(fields: [newsItemId], references: [id])
+
+  @@id([recommendationId, newsItemId])
+  @@map("recommendation_sources")
+}
+
+/// 2.8 outcomes (FR-V4, arch §7)
+model Outcome {
+  recommendationId String   @id @map("recommendation_id") @db.Uuid
+  ticker            String
+  entryPrice        Decimal? @map("entry_price")
+  ret1d              Decimal? @map("ret_1d")
+  ret3d              Decimal? @map("ret_3d")
+  ret7d              Decimal? @map("ret_7d")
+  hit1d              Boolean? @map("hit_1d")
+  hit3d              Boolean? @map("hit_3d")
+  hit7d              Boolean? @map("hit_7d")
+  status             String   @default("pending")
+  attempts           Int      @default(0)
+  updatedAt          DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  @@map("outcomes")
+}
+
+/// 2.9 digests (FR-V2)
+model Digest {
+  cycleId     String   @id @map("cycle_id") @db.Uuid
+  marketMood String   @map("market_mood")
+  synthesis   String
+  topThemes   Json     @map("top_themes")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle Cycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@map("digests")
+}
+
+/// 2.10 settings — key/value singleton config (FR-C4/C5/C6/C8)
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("settings")
+}
+
+/// 2.11 llm_calls — spend ledger (arch §8)
+model LlmCall {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId       String?  @map("cycle_id") @db.Uuid
+  purpose       String
+  model         String
+  inputTokens   Int      @map("input_tokens")
+  outputTokens  Int      @map("output_tokens")
+  costUsd       Decimal  @map("cost_usd") @db.Decimal(10, 6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle Cycle? @relation(fields: [cycleId], references: [id])
+
+  @@index([createdAt])
+  @@map("llm_calls")
+}
+
+/// 2.12 secrets — UI-managed secrets (arch §9). Never joined into any
+/// export/read API; /api/config/llm GET returns only {set, last4}.
+model Secret {
+  key       String   @id
+  value     String
+  last4     String
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  @@map("secrets")
+}
+
+/// 2.13 pm_markets — Polymarket market snapshots
+model PmMarket {
+  id             String    @id
+  question       String
+  slug           String
+  category       String?
+  endDate        DateTime? @map("end_date") @db.Timestamptz
+  yesPrice       Decimal?  @map("yes_price") @db.Decimal(6, 4)
+  volume24hUsd   Decimal?  @map("volume_24h_usd")
+  liquidityUsd   Decimal?  @map("liquidity_usd")
+  active         Boolean   @default(true)
+  resolved       Boolean   @default(false)
+  resolution     String?
+  snapshotAt     DateTime  @default(now()) @map("snapshot_at") @db.Timestamptz
+
+  opportunities PmOpportunity[]
+
+  @@index([active, volume24hUsd(sort: Desc)])
+  @@map("pm_markets")
+}
+
+/// 2.14 pm_opportunities + provenance + outcomes (FR-V5)
+model PmOpportunity {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId         String   @map("cycle_id") @db.Uuid
+  marketId        String   @map("market_id")
+  dedupeKey       String   @unique @map("dedupe_key")
+  discovery       String
+  side            String
+  marketPrice     Decimal  @map("market_price") @db.Decimal(6, 4)
+  estProbability  Decimal  @map("est_probability") @db.Decimal(6, 4)
+  edgePoints      Decimal  @map("edge_points") @db.Decimal(6, 2)
+  confidence      Decimal  @db.Decimal(3, 2)
+  reasoning       String
+  ruleTrace       Json     @map("rule_trace")
+  promptVersion   String   @map("prompt_version")
+  model           String
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  cycle     Cycle                   @relation(fields: [cycleId], references: [id])
+  market    PmMarket                @relation(fields: [marketId], references: [id])
+  analyses  PmOpportunityAnalysis[]
+  outcome   PmOutcome?
+
+  @@index([createdAt(sort: Desc)])
+  @@map("pm_opportunities")
+}
+
+/// news-driven provenance
+model PmOpportunityAnalysis {
+  pmOpportunityId String @map("pm_opportunity_id") @db.Uuid
+  analysisId      String @map("analysis_id") @db.Uuid
+
+  pmOpportunity PmOpportunity @relation(fields: [pmOpportunityId], references: [id], onDelete: Cascade)
+  analysis      Analysis      @relation(fields: [analysisId], references: [id])
+
+  @@id([pmOpportunityId, analysisId])
+  @@map("pm_opportunity_analyses")
+}
+
+model PmOutcome {
+  pmOpportunityId          String   @id @map("pm_opportunity_id") @db.Uuid
+  price1d                   Decimal? @map("price_1d") @db.Decimal(6, 4)
+  price3d                   Decimal? @map("price_3d") @db.Decimal(6, 4)
+  price7d                   Decimal? @map("price_7d") @db.Decimal(6, 4)
+  movedTowardEstimate7d     Boolean? @map("moved_toward_estimate_7d")
+  resolved                  Boolean  @default(false)
+  resolution                String?
+  estimateCorrect           Boolean? @map("estimate_correct")
+  status                    String   @default("pending")
+  attempts                  Int      @default(0)
+  updatedAt                 DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  pmOpportunity PmOpportunity @relation(fields: [pmOpportunityId], references: [id], onDelete: Cascade)
+
+  @@map("pm_outcomes")
+}
+
+/// 2.15 source_tests — async test-fetch handshake (arch §6)
+model SourceTest {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceId     String    @map("source_id") @db.Uuid
+  status       String    @default("requested")
+  result       Json?
+  requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz
+
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@map("source_tests")
+}
