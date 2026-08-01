@@ -12,9 +12,18 @@ probability estimate diverges from the market price. Nothing is executed
 automatically: every recommendation and every flagged market is for your
 own review.
 
-**Setting it up on a Mac? Read [`RUN-LOCAL.md`](RUN-LOCAL.md)** — a
-step-by-step runbook covering the repo/branch to use, Homebrew
+**New here / a follower setting this up for the first time? Read
+[`GET-STARTED.md`](GET-STARTED.md)** — the quickstart: what you need,
+the one-paste Claude Code setup, and what "your own copy, your own API
+key" means.
+
+**Already set up, want the full step-by-step runbook? Read
+[`RUN-LOCAL.md`](RUN-LOCAL.md)** — covers the repo/branch to use, Homebrew
 prerequisites, the exact commands, and every failure mode worth knowing.
+
+**Using the dashboard day to day? Read [`docs/manual-th.html`](docs/manual-th.html)**
+— a Thai-language, illustrated walkthrough of every tab, the news cycle,
+and how to read BUY/SELL/No Action signals.
 
 Full spec: [`CLAUDE.md`](CLAUDE.md) and [`docs/`](docs/) (product
 requirements, architecture, data model, LLM pipeline, config schema).

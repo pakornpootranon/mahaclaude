@@ -1,5 +1,9 @@
 # Running Mahachai Market Watch locally on macOS
 
+> New here? [`GET-STARTED.md`](GET-STARTED.md) is the short version of
+> this file. Once it's running, [`docs/manual-th.html`](docs/manual-th.html)
+> is the Thai-language usage manual for the dashboard itself.
+
 Everything here runs directly on your Mac. **No Docker, no Compose, no
 containers anywhere.** Three things run: a Postgres you install with
 Homebrew, a Next.js dashboard, and (optionally) a Python worker.

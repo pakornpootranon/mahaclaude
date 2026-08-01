@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>คู่มือการใช้งาน Mahachai Market Watch</title>
+<meta name="description" content="คู่มือภาษาไทยสำหรับใช้งานแดชบอร์ดเฝ้าข่าวการเงิน Mahachai Market Watch" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230c6e73'/%3E%3Cpath d='M20 65 L40 45 L55 58 L82 28' stroke='%23e0ac4a' stroke-width='9' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<style>
+  /* ---- Design tokens ---------------------------------------------- */
+  :root {
+    --sea: #eef3f4;         /* page ground: pale teal-grey, calm dashboard canvas */
+    --panel: #ffffff;
+    --panel-tint: #e3ecec;
+    --ink: #142329;         /* body text: deep blue-charcoal, not pure black */
+    --ink-soft: #4b6067;
+    --line: #cddadb;
+    --brand: #0c6e73;       /* primary accent: teal — "sea" + trust */
+    --brand-ink: #ffffff;
+    --gold: #9c6f22;        /* secondary accent: brass — value/markets, not terracotta */
+    --gold-tint: #f4e9d2;
+    --buy: #1f8a5f;         /* semantic: never reused as decorative accent */
+    --buy-tint: #dcf1e6;
+    --sell: #c14a3a;
+    --sell-tint: #f9e2de;
+    --watch: #6b7a7d;
+    --watch-tint: #e6eced;
+    --radius: 10px;
+    --font-th: "Sarabun", "Noto Sans Thai", "Leelawadee UI", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --sea: #0b1518;
+      --panel: #101d20;
+      --panel-tint: #16262a;
+      --ink: #e7eef0;
+      --ink-soft: #9db2b6;
+      --line: #23383c;
+      --brand: #3bbdb5;
+      --brand-ink: #06181a;
+      --gold: #e0ac4a;
+      --gold-tint: #3a2d13;
+      --buy: #3fbf8a;
+      --buy-tint: #113526;
+      --sell: #e2786a;
+      --sell-tint: #3a1c17;
+      --watch: #93a4a7;
+      --watch-tint: #1c2b2e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --sea: #0b1518; --panel: #101d20; --panel-tint: #16262a; --ink: #e7eef0; --ink-soft: #9db2b6;
+    --line: #23383c; --brand: #3bbdb5; --brand-ink: #06181a; --gold: #e0ac4a; --gold-tint: #3a2d13;
+    --buy: #3fbf8a; --buy-tint: #113526; --sell: #e2786a; --sell-tint: #3a1c17; --watch: #93a4a7; --watch-tint: #1c2b2e;
+  }
+  :root[data-theme="light"] {
+    --sea: #eef3f4; --panel: #ffffff; --panel-tint: #e3ecec; --ink: #142329; --ink-soft: #4b6067;
+    --line: #cddadb; --brand: #0c6e73; --brand-ink: #ffffff; --gold: #9c6f22; --gold-tint: #f4e9d2;
+    --buy: #1f8a5f; --buy-tint: #dcf1e6; --sell: #c14a3a; --sell-tint: #f9e2de; --watch: #6b7a7d; --watch-tint: #e6eced;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  body {
+    margin: 0;
+    background: var(--sea);
+    color: var(--ink);
+    font-family: var(--font-th);
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  a { color: var(--brand); }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  h1, h2, h3 { text-wrap: balance; font-weight: 700; line-height: 1.3; margin: 0 0 .5em; }
+  p { margin: 0 0 1em; color: var(--ink); }
+  .lead { color: var(--ink-soft); }
+  code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- Shell -------------------------------------------------------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: .75rem;
+    padding: .75rem 1.25rem;
+    background: color-mix(in srgb, var(--sea) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--brand); flex: none;
+    display: grid; place-items: center; }
+  .topbar .mark svg { width: 16px; height: 16px; }
+  .topbar .name { font-weight: 700; font-size: .95rem; }
+  .topbar .ver { font-family: var(--font-mono); font-size: .7rem; color: var(--gold);
+    border: 1px solid var(--gold); border-radius: 999px; padding: .1rem .5rem; }
+  .topbar .spacer { flex: 1; }
+  .topbar .ghlink { font-size: .8rem; color: var(--ink-soft); text-decoration: none; }
+  .topbar .ghlink:hover { color: var(--brand); }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 1.25rem; display: grid;
+    grid-template-columns: 220px minmax(0, 1fr); gap: 2.5rem; align-items: start; }
+  @media (max-width: 880px) { .shell { grid-template-columns: 1fr; } }
+
+  nav.toc { position: sticky; top: 4.2rem; padding-top: 2rem; align-self: start; }
+  @media (max-width: 880px) {
+    nav.toc { position: static; padding-top: 1rem; overflow-x: auto; }
+    nav.toc ul { display: flex; gap: .4rem; list-style: none; margin: 0; padding: 0 0 .5rem; white-space: nowrap; }
+  }
+  nav.toc ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+  nav.toc a { display: block; padding: .35rem .6rem; border-radius: 8px; font-size: .85rem;
+    color: var(--ink-soft); text-decoration: none; border-left: 2px solid transparent; }
+  @media (max-width: 880px) { nav.toc a { border-left: none; border: 1px solid var(--line); border-radius: 999px; } }
+  nav.toc a:hover { color: var(--brand); background: var(--panel-tint); }
+  nav.toc .eyebrow { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft);
+    padding: 0 .6rem; margin-bottom: .3rem; }
+
+  main { min-width: 0; padding: 2rem 0 5rem; }
+
+  /* ---- Hero ---------------------------------------------------------- */
+  .hero { padding: 1.25rem 0 2.25rem; border-bottom: 1px solid var(--line); margin-bottom: 2.5rem; }
+  .hero .kicker { display: inline-flex; align-items: center; gap: .4rem; font-size: .75rem;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--brand); margin-bottom: .6rem; }
+  .hero h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); max-width: 22ch; }
+  .hero .lead { max-width: 62ch; font-size: 1.05rem; }
+  .advisory { margin-top: 1rem; display: inline-flex; gap: .5rem; align-items: flex-start;
+    background: var(--gold-tint); border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+    border-radius: var(--radius); padding: .7rem .9rem; font-size: .85rem; max-width: 62ch; }
+  .advisory svg { flex: none; margin-top: .15rem; color: var(--gold); }
+
+  section { margin: 3rem 0; scroll-margin-top: 4.5rem; }
+  section > h2 { font-size: 1.35rem; display: flex; align-items: baseline; gap: .5rem; }
+  section > h2 .num { font-family: var(--font-mono); font-size: .8rem; color: var(--ink-soft); }
+  section > .intro { max-width: 68ch; }
+
+  /* ---- Cards / panels ------------------------------------------------ */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+  .figure { display: flex; flex-direction: column; gap: .5rem; }
+  .figure figcaption { font-size: .8rem; color: var(--ink-soft); }
+
+  .badge { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: .7rem;
+    font-weight: 600; letter-spacing: .02em; border-radius: 6px; padding: .15rem .45rem; border: 1px solid transparent; }
+  .badge.buy { background: var(--buy-tint); color: var(--buy); border-color: color-mix(in srgb, var(--buy) 35%, transparent); }
+  .badge.sell { background: var(--sell-tint); color: var(--sell); border-color: color-mix(in srgb, var(--sell) 35%, transparent); }
+  .badge.watch { background: var(--watch-tint); color: var(--watch); border-color: color-mix(in srgb, var(--watch) 35%, transparent); }
+  .badge.brand { background: color-mix(in srgb, var(--brand) 14%, transparent); color: var(--brand); }
+  .badge.outline { background: transparent; color: var(--ink-soft); border-color: var(--line); }
+
+  /* ---- Mock: recommendation card ------------------------------------- */
+  .mock-rec { display: flex; flex-direction: column; gap: .5rem; }
+  .mock-rec .row1 { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .mock-rec .ticker { font-family: var(--font-mono); font-size: .72rem; background: var(--panel-tint);
+    border-radius: 6px; padding: .12rem .4rem; }
+  .mock-rec .ts { margin-left: auto; font-size: .72rem; color: var(--ink-soft); font-family: var(--font-mono); }
+  .mock-rec .reason { font-size: .88rem; }
+  .mock-rec .caveat { font-size: .78rem; font-style: italic; color: var(--ink-soft); }
+  .mock-rec .meta { display: flex; flex-wrap: wrap; gap: .8rem; font-size: .76rem; color: var(--ink-soft); font-family: var(--font-mono); }
+
+  /* ---- Mock: topic card ------------------------------------------------ */
+  .mock-topic h4 { margin: 0; font-size: .95rem; }
+  .mock-topic .desc { font-size: .78rem; color: var(--ink-soft); margin: .2rem 0 .7rem; }
+  .mock-topic .stat-row { display: flex; gap: .9rem; font-size: .74rem; color: var(--ink-soft); font-family: var(--font-mono); margin-bottom: .7rem; }
+  .ai-box { background: var(--panel-tint); border-radius: 8px; padding: .55rem .7rem; margin-bottom: .7rem; }
+  .ai-box .label { font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft);
+    display: flex; justify-content: space-between; margin-bottom: .25rem; }
+  .ai-box p { margin: 0; font-size: .8rem; }
+  .signal-group { margin-bottom: .5rem; }
+  .signal-group .glabel { font-size: .65rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: .3rem; }
+  .signal-row { display: flex; align-items: center; gap: .5rem; border: 1px solid var(--line); border-radius: 7px;
+    padding: .3rem .5rem; font-size: .78rem; margin-bottom: .3rem; }
+  .signal-row .t { font-family: var(--font-mono); font-weight: 600; }
+  .signal-row .badge { margin-left: auto; }
+
+  /* ---- Mock: ranked ticker table --------------------------------------- */
+  .mock-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  .mock-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--ink-soft); border-bottom: 1px solid var(--line); padding: .3rem .4rem; }
+  .mock-table td { padding: .35rem .4rem; border-bottom: 1px solid var(--line); font-family: var(--font-mono); }
+  .mock-table tr:last-child td { border-bottom: none; }
+
+  /* ---- Mock: status bar -------------------------------------------------- */
+  .mock-status { display: flex; flex-wrap: wrap; gap: 1.1rem; align-items: center; font-size: .78rem; }
+  .mock-status .grp { display: flex; align-items: center; gap: .4rem; }
+  .mock-status .lbl { color: var(--ink-soft); }
+  .pulse { position: relative; width: 8px; height: 8px; }
+  .pulse::before, .pulse::after { content: ""; position: absolute; inset: 0; border-radius: 999px; background: var(--brand); }
+  @media (prefers-reduced-motion: no-preference) {
+    .pulse::before { animation: ping 1.6s cubic-bezier(0,0,.2,1) infinite; }
+  }
+  @keyframes ping { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(2.6); opacity: 0; } }
+
+  /* ---- Flow diagram ------------------------------------------------------- */
+  .flow { display: flex; gap: .5rem; overflow-x: auto; padding: .5rem .1rem 1rem; }
+  .flow-step { flex: none; width: 148px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); padding: .7rem .7rem .8rem; position: relative; }
+  .flow-step .n { font-family: var(--font-mono); font-size: .68rem; color: var(--brand); }
+  .flow-step h5 { margin: .2rem 0 .25rem; font-size: .82rem; }
+  .flow-step p { margin: 0; font-size: .72rem; color: var(--ink-soft); }
+  .flow-arrow { flex: none; align-self: center; width: 22px; color: var(--line); }
+  .flow-step.done { border-color: color-mix(in srgb, var(--buy) 45%, var(--line)); }
+
+  /* ---- Legend -------------------------------------------------------------- */
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  .legend .item { display: flex; gap: .7rem; }
+  .legend .item .dot { flex: none; width: 2rem; height: 2rem; border-radius: 8px; display: grid; place-items: center;
+    font-family: var(--font-mono); font-size: .65rem; font-weight: 700; }
+  .legend h5 { margin: 0 0 .2rem; font-size: .88rem; }
+  .legend p { margin: 0; font-size: .8rem; color: var(--ink-soft); }
+
+  /* ---- Tab list ------------------------------------------------------------- */
+  .tabnav { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
+  .tabnav span { font-size: .78rem; border: 1px solid var(--line); border-radius: 999px; padding: .25rem .7rem; color: var(--ink-soft); }
+  .tabnav span.on { border-color: var(--brand); color: var(--brand); background: color-mix(in srgb, var(--brand) 10%, transparent); }
+
+  details.faq { border-bottom: 1px solid var(--line); padding: .85rem 0; }
+  details.faq summary { cursor: pointer; font-weight: 600; font-size: .95rem; list-style: none; }
+  details.faq summary::-webkit-details-marker { display: none; }
+  details.faq summary::before { content: "+"; display: inline-block; width: 1.1em; color: var(--brand); font-family: var(--font-mono); }
+  details.faq[open] summary::before { content: "–"; }
+  details.faq .a { margin-top: .5rem; padding-left: 1.1em; font-size: .9rem; color: var(--ink-soft); }
+
+  footer { border-top: 1px solid var(--line); padding: 1.5rem 0; font-size: .8rem; color: var(--ink-soft);
+    display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; justify-content: space-between; }
+
+  ::selection { background: color-mix(in srgb, var(--gold) 45%, transparent); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="var(--brand-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 L10 10 L14 14 L20 6"/></svg></span>
+  <span class="name">Mahachai Market Watch</span>
+  <span class="ver">v0.2</span>
+  <span class="spacer"></span>
+  <a class="ghlink" href="https://github.com/pakornpootranon/mahaclaude" target="_blank" rel="noreferrer">github.com/pakornpootranon/mahaclaude</a>
+</div>
+
+<div class="shell">
+  <nav class="toc" aria-label="สารบัญ">
+    <div class="eyebrow">สารบัญ</div>
+    <ul>
+      <li><a href="#overview">ระบบนี้คืออะไร</a></li>
+      <li><a href="#statusbar">แถบสถานะ</a></li>
+      <li><a href="#feed">Action feed</a></li>
+      <li><a href="#digest">Digests</a></li>
+      <li><a href="#topics">Topics</a></li>
+      <li><a href="#polymarket">Polymarket</a></li>
+      <li><a href="#history">History</a></li>
+      <li><a href="#settings">Settings</a></li>
+      <li><a href="#cycle">วงจรการทำงาน</a></li>
+      <li><a href="#signals">วิธีอ่านสัญญาณ</a></li>
+      <li><a href="#faq">คำถามที่พบบ่อย</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <span class="kicker">คู่มือผู้ใช้ · ภาษาไทย</span>
+      <h1>ใช้งาน Mahachai Market Watch ให้เป็นภายใน 10 นาที</h1>
+      <p class="lead">แดชบอร์ดเฝ้าข่าวการเงินส่วนตัว ที่ดึงข่าวจากหลายแหล่งตามหัวข้อที่คุณตั้งไว้ ให้ Claude
+      วิเคราะห์ผลกระทบต่อหมวดธุรกิจ/หุ้นแต่ละตัว แล้วสรุปเป็นคำแนะนำ BUY / SELL / WATCH พร้อมเหตุผล
+      ให้คุณอ่านและตัดสินใจเอง — คู่มือนี้พาไปทีละส่วนของหน้าจอ พร้อมตัวอย่างจริงจากระบบ</p>
+      <div class="advisory">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+        <span><strong>ไม่ใช่คำแนะนำการลงทุน</strong> ทุกคำแนะนำในระบบเป็นเพียงความเห็นเพื่อการวิจัยเบื้องต้น
+        การตัดสินใจลงทุนเป็นความรับผิดชอบของคุณเองทั้งหมด ระบบนี้ไม่ส่งคำสั่งซื้อขายหรือวางเดิมพันใด ๆ โดยอัตโนมัติ</span>
+      </div>
+    </div>
+
+    <section id="overview">
+      <h2><span class="num">§1</span> ระบบนี้คืออะไร</h2>
+      <p class="intro">ทุกครั้งที่ระบบ "รันรอบ" (cycle) มันจะไล่ทำ 6 ขั้นตอนอัตโนมัติ: ดึงข่าว → คัดกรองข่าวที่เกี่ยวข้อง
+      → วิเคราะห์เชิงลึกด้วย Claude → ใช้กติกาที่ตั้งไว้ตัดสินว่าจะออกคำแนะนำหรือไม่ → สแกนโอกาสใน Polymarket →
+      สรุปผลเป็นภาษาไทยทั้งหมด ผลลัพธ์แต่ละรอบจะไปโผล่ใน 6 แท็บของแดชบอร์ด อธิบายทีละแท็บด้านล่าง</p>
+      <div class="tabnav">
+        <span class="on">Action feed</span><span class="on">Digests</span><span class="on">Topics</span>
+        <span class="on">Polymarket</span><span class="on">History</span><span class="on">Settings</span>
+      </div>
+    </section>
+
+    <section id="statusbar">
+      <h2><span class="num">§2</span> แถบสถานะด้านบน</h2>
+      <p class="intro">แถบนี้ติดอยู่บนสุดของทุกหน้า บอก 3 อย่าง: รอบล่าสุดอยู่สถานะไหน, แหล่งข่าวสุขภาพดีหรือไม่,
+      และใช้งบประมาณ LLM ไปเท่าไหร่แล้วเทียบกับเพดานที่ตั้งไว้</p>
+      <div class="panel">
+        <div class="mock-status">
+          <div class="grp"><span class="lbl">Last cycle:</span> <span class="pulse" aria-hidden="true"></span>
+            <span class="badge outline">ANALYZING</span> <span class="mono">กำลังทำงาน 3 นาที</span></div>
+          <div class="grp"><span class="lbl">Sources:</span> <span class="badge buy">ปกติทั้งหมด</span></div>
+          <div class="grp"><span class="lbl">LLM spend:</span> <span class="mono">$2.40 / $15.00 (16%)</span></div>
+        </div>
+      </div>
+      <p style="margin-top:.75rem; font-size:.85rem;">ระหว่างที่รอบกำลังทำงาน จุดสีจะกะพริบและข้อความจะขึ้น "กำลังทำงาน Nนาที"
+      แทนเวลา — เมื่อเสร็จจะเปลี่ยนเป็น badge สีเขียว <span class="badge buy">DONE</span> หรือสีแดง
+      <span class="badge sell">FAILED</span> พร้อมเวลาที่เสร็จจริง</p>
+    </section>
+
+    <section id="feed">
+      <h2><span class="num">§3</span> Action feed — สตรีมคำแนะนำ</h2>
+      <p class="intro">หน้าแรกที่เปิดมาเจอ เรียงจากล่าสุดไปเก่าสุด กรองได้ตามตลาด/ประเภทคำแนะนำ/หัวข้อ/ความมั่นใจขั้นต่ำ/ช่วงวันที่
+      แต่ละการ์ดคือ 1 คำแนะนำ พร้อมเหตุผลและแหล่งข่าวอ้างอิง</p>
+      <div class="figure">
+        <div class="panel mock-rec">
+          <div class="row1">
+            <span class="badge buy">BUY</span>
+            <span class="badge outline">US</span>
+            <strong style="font-size:.85rem;">Energy</strong>
+            <span class="ticker">XLE</span><span class="ticker">CVX</span><span class="ticker">XOM</span>
+            <span class="ts">01 ส.ค. 20:14 ICT</span>
+          </div>
+          <p class="reason">OPEC+ ประกาศลดกำลังการผลิตมากกว่าที่ตลาดคาด กดดันให้ราคาน้ำมันดิบมีแรงหนุนระยะสั้น
+          หุ้นกลุ่มพลังงานสหรัฐฯ น่าจะได้อานิสงส์จากมาร์จิ้นที่ดีขึ้น</p>
+          <p class="caveat">ข้อควรระวัง: การประกาศเพียงวันเดียว ในอดีตการปฏิบัติตามโควตาจริงมักไม่ครบ 100%</p>
+          <div class="meta">
+            <span>confidence 0.75</span><span>magnitude 0.55 (notable)</span><span>horizon: weeks</span>
+            <span>topic: Oil supply shocks</span>
+          </div>
+        </div>
+        <figcaption>ตัวอย่างการ์ดคำแนะนำจริงจากหัวข้อ “Oil supply shocks” — คลิกการ์ดเพื่อดูรายละเอียดเต็ม
+        รวมถึงข่าวต้นทางและ rule evaluation trace ว่าทำไมถึงทริกเกอร์</figcaption>
+      </div>
+    </section>
+
+    <section id="digest">
+      <h2><span class="num">§4</span> Digests — สรุปรายรอบ (ภาษาไทยทั้งหมด)</h2>
+      <p class="intro">1 หน้าต่อ 1 รอบ ตั้งแต่ v0.2 เป็นต้นไป บทสรุปภาพรวม, ธีมเด่นของรอบ, และ
+      <strong>สรุปของทุกหัวข้อที่เฝ้าดู — แม้หัวข้อนั้นจะไม่มีข่าวเข้าเกณฑ์เลยในรอบนั้น</strong> ก็ยังมีบทวิเคราะห์สั้น ๆ
+      เป็นภาษาไทยให้อ่านเสมอ ไม่มีหัวข้อไหนถูกทิ้งไว้เงียบ ๆ</p>
+      <div class="grid-2">
+        <div class="figure">
+          <div class="panel">
+            <p style="font-size:.85rem;">"รอบนี้เงียบมาก ไม่มีข่าวใหม่ถูกดึงเข้าระบบเลย จึงไม่มีคำแนะนำ BUY/SELL/WATCH
+            ใด ๆ ถูกทริกเกอร์ ทั้ง 8 หัวข้อที่เฝ้าดูไม่มีรายการที่เข้าเกณฑ์... แนะนำให้ถือสถานะเดิมและรอรอบถัดไป"</p>
+            <div class="ai-box" style="margin-top:.5rem;">
+              <div class="label"><span>สรุปรายหัวข้อ · Oil supply shocks</span></div>
+              <p>หัวข้อนี้ติดตามช็อกด้านอุปทานน้ำมันจาก OPEC หรือเหตุขัดข้องอื่น ๆ รอบนี้ไม่มีข่าวเข้าเกณฑ์
+              ราคาน้ำมันจึงไม่มีตัวกระตุ้นใหม่จากฝั่งข่าว</p>
+            </div>
+          </div>
+          <figcaption>บทสรุปภาพรวม + ตัวอย่างสรุปรายหัวข้อ 1 รายการ จากรอบจริงที่ไม่มีข่าวเข้าเลย</figcaption>
+        </div>
+        <div class="figure">
+          <div class="panel">
+            <p style="font-size:.78rem; color:var(--ink-soft); margin-bottom:.4rem;">อันดับหุ้นแนะนำ (ตัวอย่าง)</p>
+            <table class="mock-table">
+              <thead><tr><th>#</th><th>Ticker</th><th>ตลาด</th><th>สัญญาณ</th><th>ความมั่นใจ</th></tr></thead>
+              <tbody>
+                <tr><td>1</td><td>NVDA</td><td>US</td><td><span class="badge buy">BUY</span></td><td>0.78</td></tr>
+                <tr><td>2</td><td>KCE.BK</td><td>TH</td><td><span class="badge sell">SELL</span></td><td>0.61</td></tr>
+                <tr><td>3</td><td>PTT.BK</td><td>TH</td><td><span class="badge watch">No Action</span></td><td>—</td></tr>
+                <tr><td>4</td><td>XLE</td><td>US</td><td><span class="badge watch">No Action</span></td><td>—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <figcaption>รวมหุ้นทุกตัวจากทุกหัวข้อไว้ในตารางเดียว เรียงลำดับ BUY/SELL ที่ความมั่นใจสูงสุดขึ้นก่อน
+          ตามด้วย No Action — คำนวณจากกติกาของระบบ (rules engine) ไม่ใช่ AI เดา</figcaption>
+        </div>
+      </div>
+    </section>
+
+    <section id="topics">
+      <h2><span class="num">§5</span> Topics — หัวข้อ/เซกเตอร์ที่เฝ้าดู</h2>
+      <p class="intro">การ์ดของแต่ละหัวข้อที่คุณตั้งไว้ (เช่น "Fed rate decisions", "Chip export controls")
+      พร้อมสถานะ quiet/active/hot ตามจำนวนข่าวที่เข้าเกณฑ์ใน 48 ชม.ที่ผ่านมา, สรุป AI ภาษาไทยล่าสุด,
+      และรายการหุ้นที่เกี่ยวข้องแยกตลาด US/ไทย พร้อมสัญญาณปัจจุบัน</p>
+      <div class="grid-2">
+        <div class="figure">
+          <div class="panel mock-topic">
+            <h4>Chip export controls / semiconductor cycle</h4>
+            <p class="desc">มาตรการควบคุมส่งออกชิปสหรัฐฯ-จีน และวัฏจักรอุปสงค์เซมิคอนดักเตอร์</p>
+            <div class="stat-row"><span>sensitivity 0.70</span><span>0 hit/48h</span><span>last triggered: 2 วันก่อน</span></div>
+            <div class="ai-box">
+              <div class="label"><span>สรุปล่าสุด (AI)</span><span>5 ชม.ที่แล้ว</span></div>
+              <p>ติดตามมาตรการควบคุมการส่งออกชิปและวัฏจักรอุปสงค์เซมิคอนดักเตอร์ รอบนี้ไม่มีข่าวที่เข้าเกณฑ์
+              จึงไม่มีสัญญาณใหม่ต่อกลุ่ม semiconductor</p>
+            </div>
+            <div class="signal-group">
+              <div class="glabel">US stocks</div>
+              <div class="signal-row"><span class="t">NVDA</span><span class="badge watch">No Action</span></div>
+              <div class="signal-row"><span class="t">AMD</span><span class="badge watch">No Action</span></div>
+            </div>
+            <div class="signal-group">
+              <div class="glabel">Thailand stocks</div>
+              <div class="signal-row"><span class="t">HANA.BK</span><span class="badge watch">No Action</span></div>
+              <div class="signal-row"><span class="t">KCE.BK</span><span class="badge watch">No Action</span></div>
+            </div>
+          </div>
+          <figcaption>โครงสร้างการ์ดหัวข้อจริง — ส่วน "Stock signals" แยกกลุ่มหุ้นสหรัฐฯ กับหุ้นไทยให้ชัดเจน</figcaption>
+        </div>
+        <div class="figure">
+          <div class="panel">
+            <h4 style="margin:0 0 .4rem; font-size:.95rem;">เพิ่มหัวข้อใหม่ + ให้ AI ช่วยหาหุ้น</h4>
+            <p style="font-size:.85rem;">ปุ่ม <strong>“+ Add topic”</strong> ในหน้า Topics เปิดฟอร์มให้กรอกชื่อกับคำอธิบาย
+            แล้วกดปุ่ม <strong>“Prepopulate tickers (AI)”</strong> — Claude จะอ่านชื่อและคำอธิบายของคุณ
+            แล้วเสนอหุ้นอย่างน้อย <strong>5 ตัวฝั่งสหรัฐฯ และ 5 ตัวฝั่งไทย (.BK)</strong> พร้อมเหตุผลของแต่ละตัว
+            ให้คุณติ๊กเลือก แก้ไข หรือปฏิเสธได้ทีละแถวก่อนบันทึกจริง — ไม่มีอะไรถูกเพิ่มอัตโนมัติ</p>
+            <div class="panel" style="background:var(--panel-tint); border-style:dashed; font-size:.78rem;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:.3rem;">
+                <span>US tickers: <strong style="color:var(--buy)">15</strong></span>
+                <span>Thailand tickers: <strong style="color:var(--buy)">8</strong></span>
+              </div>
+              <span style="color:var(--ink-soft);">ตัวนับจะเตือนเป็นสีเหลืองถ้าฝั่งไหนได้น้อยกว่า 5 ตัว</span>
+            </div>
+          </div>
+          <figcaption>ตัวอย่างจริง: หัวข้อ “Semiconductor export controls” ได้หุ้นสหรัฐฯ 15 ตัว และหุ้นไทย 8 ตัว จาก AI</figcaption>
+        </div>
+      </div>
+    </section>
+
+    <section id="polymarket">
+      <h2><span class="num">§6</span> Polymarket — โอกาสจากตลาดพยากรณ์</h2>
+      <p class="intro">แท็บนี้แสดงตลาดพยากรณ์บน Polymarket ที่ราคาตลาดกับความน่าจะเป็นที่ Claude ประเมินไว้ต่างกันมากพอ
+      (edge) ทั้งจากข่าวที่เพิ่งวิเคราะห์และจากการสแกนตลาดที่มีปริมาณซื้อขายสูงทุกรอบ — เป็นข้อมูลเพื่อการศึกษาเช่นกัน
+      ระบบไม่วางเดิมพันใด ๆ</p>
+      <div class="panel mock-rec">
+        <div class="row1">
+          <span class="badge buy">YES ดูราคาถูก</span>
+          <span class="badge outline">news-driven</span>
+          <span class="badge outline">Economy</span>
+          <span class="ts">01 ส.ค. 20:14 ICT</span>
+        </div>
+        <p class="reason" style="font-weight:600;">Fed จะลดดอกเบี้ยในการประชุมเดือนกันยายนหรือไม่?</p>
+        <div class="meta">
+          <span>market price 0.42</span><span>LLM estimate 0.61</span>
+          <span style="color:var(--ink)">edge 19.0 pts</span><span>confidence 0.58</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="history">
+      <h2><span class="num">§7</span> History — ผลตอบแทนย้อนหลัง</h2>
+      <p class="intro">ตารางคำแนะนำในอดีต พร้อมผลตอบแทนจริงของราคาหุ้นที่ T+1 / T+3 / T+7 วันทำการหลังจากคำแนะนำออก
+      พร้อมสรุปอัตราแม่นยำ (hit rate) แยกตามหัวข้อและประเภทคำแนะนำ — ใช้เพื่อประเมินว่าสัญญาณจากระบบแม่นแค่ไหนในทางปฏิบัติ
+      มีแท็บย่อยสำหรับผล Polymarket ด้วยเช่นกัน</p>
+      <div class="panel" style="overflow-x:auto;">
+        <table class="mock-table">
+          <thead><tr><th>วันที่</th><th>Action</th><th>Ticker</th><th>T+1</th><th>T+3</th><th>T+7</th></tr></thead>
+          <tbody>
+            <tr><td>28 ก.ค.</td><td><span class="badge buy">BUY</span></td><td>NVDA</td><td style="color:var(--buy)">+1.2%</td><td style="color:var(--buy)">+3.4%</td><td>—</td></tr>
+            <tr><td>26 ก.ค.</td><td><span class="badge sell">SELL</span></td><td>JETS</td><td style="color:var(--sell)">−0.8%</td><td style="color:var(--buy)">+0.3%</td><td style="color:var(--sell)">−1.1%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="settings">
+      <h2><span class="num">§8</span> Settings — ตั้งค่าทั้งหมด</h2>
+      <p class="intro">ทุกอย่างที่ระบบเฝ้าดูปรับได้ในหน้านี้ ไม่ต้องแก้โค้ด และมีผลตั้งแต่รอบถัดไปโดยไม่ต้องรีสตาร์ท</p>
+      <div class="legend">
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">01</span>
+          <div><h5>Sources</h5><p>เพิ่ม/ปิดแหล่งข่าว RSS, Finnhub, NewsAPI, Reddit, และ MCP connector เช่น Bigdata.com</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">02</span>
+          <div><h5>Topics &amp; Mappings</h5><p>หัวข้อเฝ้าดู, คีย์เวิร์ด, ความไว (sensitivity), และตารางแมปหมวด/หุ้นต่อหัวข้อ</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">03</span>
+          <div><h5>Rules</h5><p>เพดานความมั่นใจ/magnitude ขั้นต่ำ, หน้าต่างกันคำแนะนำซ้ำ, จำนวนคำแนะนำสูงสุดต่อรอบ</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">04</span>
+          <div><h5>Schedule</h5><p>เวลารันรอบอัตโนมัติ (ค่าเริ่มต้น 07:00 / 12:30 / 20:30 เวลาไทย)</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">05</span>
+          <div><h5>LLM</h5><p>Claude API key (เก็บแบบ mask เสมอ), เลือกโมเดล/ระดับ reasoning ต่อขั้นตอน, เพดานงบต่อเดือน</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">06</span>
+          <div><h5>Polymarket</h5><p>เปิด/ปิดโมดูล, เพดาน edge ขั้นต่ำ, สภาพคล่องขั้นต่ำที่ยอมรับ</p></div></div>
+      </div>
+    </section>
+
+    <section id="cycle">
+      <h2><span class="num">§9</span> วงจรการทำงาน 1 รอบ</h2>
+      <p class="intro">กดปุ่ม <strong>“Run cycle now”</strong> ที่แถบสถานะ หรือรอตามตารางเวลาที่ตั้งไว้ — แต่ละรอบไล่ผ่าน 8 สถานะนี้เสมอ
+      และถ้าเครื่องดับกลางทางก็รันต่อจากสถานะเดิมได้โดยไม่ซ้ำข้อมูล</p>
+      <div class="flow" role="list">
+        <div class="flow-step" role="listitem"><span class="n">01</span><h5>PENDING</h5><p>รอ worker มารับงาน</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">02</span><h5>INGESTING</h5><p>ดึงข่าวจากทุกแหล่งที่เปิดใช้งาน</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">03</span><h5>TRIAGING</h5><p>คัดกรองข่าวที่เกี่ยวข้องแบบประหยัดต้นทุน</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">04</span><h5>ANALYZING</h5><p>Claude วิเคราะห์เชิงลึกทีละสตอรี่ไลน์</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">05</span><h5>TRIGGERING</h5><p>กติกาในระบบตัดสินว่าออกคำแนะนำหรือไม่</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">06</span><h5>PM_SCANNING</h5><p>สแกนโอกาสใน Polymarket</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step" role="listitem"><span class="n">07</span><h5>SUMMARIZING</h5><p>สรุปทุกอย่างเป็นภาษาไทย ทุกหัวข้อ</p></div>
+        <svg class="flow-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h14m0 0-5-5m5 5-5 5"/></svg>
+        <div class="flow-step done" role="listitem"><span class="n">08</span><h5>DONE</h5><p>พร้อมดูผลในทุกแท็บ</p></div>
+      </div>
+      <p style="font-size:.85rem;"><strong>ข้อควรรู้:</strong> หน้าเว็บ (<code>make dev-web</code>) แค่ "ขอ" ให้รันรอบเท่านั้น
+      งานจริงทำโดยโปรเซส worker แยกต่างหาก (<code>make dev-worker</code> รันครั้งเดียว หรือ <code>make serve</code>
+      รันตามตารางเวลาต่อเนื่อง) ถ้าไม่มี worker ทำงานอยู่ รอบจะค้างที่ PENDING ตลอดไป</p>
+    </section>
+
+    <section id="signals">
+      <h2><span class="num">§10</span> วิธีอ่านสัญญาณ</h2>
+      <div class="legend">
+        <div class="item"><span class="dot" style="background:var(--buy-tint); color:var(--buy);">B</span>
+          <div><h5>BUY</h5><p>ข่าวเชิงบวกต่อหมวดนี้ ผ่านเกณฑ์ความมั่นใจและ magnitude ที่ตั้งไว้</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--sell-tint); color:var(--sell);">S</span>
+          <div><h5>SELL</h5><p>ข่าวเชิงลบต่อหมวดนี้ ผ่านเกณฑ์เดียวกัน</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--watch-tint); color:var(--watch);">–</span>
+          <div><h5>No Action / WATCH</h5><p>ยังไม่มีคำแนะนำที่ผ่านเกณฑ์สำหรับหุ้นตัวนี้ในหัวข้อนี้ — ไม่ใช่ "ห้ามซื้อ" เพียงแค่ยังไม่มีสัญญาณ</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">M</span>
+          <div><h5>Magnitude</h5><p>0–1 บอกว่าข่าวขยับตลาดแรงแค่ไหน: 0.2 ปกติ / 0.5 น่าสนใจ / 0.8 ใหญ่ / 1.0 ประวัติศาสตร์</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">C</span>
+          <div><h5>Confidence</h5><p>0–1 ความมั่นใจของ Claude ต่อทิศทางที่ประเมิน ไม่ใช่ความมั่นใจว่าข่าวเป็นจริง</p></div></div>
+        <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">H</span>
+          <div><h5>Horizon</h5><p>กรอบเวลาที่ผลกระทบน่าจะเกิด: days / weeks / months</p></div></div>
+      </div>
+    </section>
+
+    <section id="faq">
+      <h2><span class="num">§11</span> คำถามที่พบบ่อย</h2>
+      <details class="faq">
+        <summary>รันรอบแล้วแต่ Action feed ว่างเปล่า ผิดปกติไหม?</summary>
+        <p class="a">ไม่ผิดปกติ — ถ้าไม่มีข่าวไหนผ่านเกณฑ์ความมั่นใจ/magnitude ที่ตั้งไว้ รอบนั้นก็จะไม่มีคำแนะนำเลย
+        แต่หน้า Digest จะยังมีบทวิเคราะห์ Thai ของทุกหัวข้อให้อ่านเสมอ ลองดูที่ "Analyzed storylines"
+        ในหน้า digest เพื่อดูว่ามีข่าวอะไรถูกพิจารณาบ้างและทำไมไม่ผ่านเกณฑ์</p>
+      </details>
+      <details class="faq">
+        <summary>ทำไมเวลาในระบบไม่ตรงกับเวลาประเทศฉัน?</summary>
+        <p class="a">ทุกเวลาในระบบแสดงผลเป็นเขต Asia/Bangkok (ICT, UTC+7) เสมอ ไม่ว่าเครื่องคุณจะตั้งเขตเวลาไว้อย่างไร</p>
+      </details>
+      <details class="faq">
+        <summary>ต้องเปิด worker ตลอดเวลาไหม?</summary>
+        <p class="a">ถ้าต้องการให้รอบรันอัตโนมัติตามตารางเวลา หรือให้ปุ่ม "Run cycle now" ทำงานได้ทันที ต้องมี
+        <code>make serve</code> รันอยู่ในเทอร์มินัลอีกหน้าต่างตลอดเวลา ถ้าต้องการรันแค่ครั้งเดียวใช้
+        <code>make dev-worker</code> แทนได้</p>
+      </details>
+      <details class="faq">
+        <summary>การรันแต่ละรอบเสียเงินไหม?</summary>
+        <p class="a">รอบที่มีการวิเคราะห์ข่าว/สแกน Polymarket จะเรียกใช้ Claude API ซึ่งมีค่าใช้จ่ายจริงตามบัญชี
+        Anthropic ของคุณ เพดานงบต่อเดือนตั้งค่าได้ที่ Settings → LLM (ค่าเริ่มต้น $15) เมื่อชนเพดาน
+        ระบบจะหยุดการวิเคราะห์แต่ยังคงดึงข่าวและสรุปแบบย่อได้ตามปกติ</p>
+      </details>
+      <details class="faq">
+        <summary>ข้อมูลของฉันปลอดภัยแค่ไหน?</summary>
+        <p class="a">แดชบอร์ดรันบนเครื่องของคุณเอง ผูกกับ <code>127.0.0.1</code> เท่านั้น เข้าจากเครื่องอื่นในเครือข่ายไม่ได้
+        และไม่มีระบบล็อกอินโดยตั้งใจ — ดังนั้นควรใช้บนเครื่องส่วนตัวเท่านั้น</p>
+      </details>
+    </section>
+
+    <footer>
+      <span>Mahachai Market Watch v0.2 — คู่มือนี้จัดทำโดย Claude Code</span>
+      <span>ไม่ใช่คำแนะนำการลงทุน · เพื่อการวิจัยส่วนบุคคลเท่านั้น</span>
+    </footer>
+  </main>
+</div>
+
+</body>
+</html>
