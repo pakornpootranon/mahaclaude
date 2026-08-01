@@ -28,7 +28,11 @@ export default function RootLayout({
           <div className="min-h-screen">
             <header className="border-b">
               <div className="flex items-center gap-4 overflow-x-auto px-4 py-3">
-                <span className="shrink-0 text-lg font-semibold">Mahachai Market Watch</span>
+                <span className="flex shrink-0 items-center gap-2 text-lg font-semibold">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/logo.png" alt="" className="h-8 w-8 rounded-full" />
+                  Mahachai Market Watch
+                </span>
                 <Nav />
                 <ThemeToggle />
               </div>
