@@ -28,20 +28,31 @@ from newswatch_worker.llm.analyze import select_storylines
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "digest-v1"
+PROMPT_VERSION = "digest-v2"
 
 DIGEST_SYSTEM_PROMPT = """You are writing the end-of-cycle digest for a personal financial news
-monitoring dashboard (NOT financial advice; nothing is executed automatically).
+monitoring dashboard (NOT financial advice; nothing is executed automatically). The user reads
+Thai, so all prose fields (synthesis, top_themes[].why, topic_summaries[].summary) MUST be
+written in Thai. Keep tickers, sector names, and topic names in their original Latin-script
+form (do not transliterate) even inside Thai sentences.
 
 Summarize this cycle's news-monitoring run for the user:
 - market_mood: one word for the overall tone of this cycle's flagged news - one of
-  'bullish', 'bearish', 'mixed', 'cautious', 'quiet' (little happened).
-- synthesis: one paragraph, <=120 words, plain language. Mention any triggered BUY/SELL/WATCH
-  actions explicitly by ticker or sector. Also note anything notable that did NOT trigger a
-  recommendation and why (e.g. below the confidence floor), so the user stays aware of
-  borderline calls.
-- top_themes: the biggest storylines this cycle (3-6), each with a one-line "why" and an
+  'bullish', 'bearish', 'mixed', 'cautious', 'quiet' (little happened). English enum value,
+  not Thai - this drives a UI badge.
+- synthesis: one paragraph, <=150 words, in Thai, plain language. Mention any triggered
+  BUY/SELL/WATCH actions explicitly by ticker or sector. Also note anything notable that did
+  NOT trigger a recommendation and why (e.g. below the confidence floor), so the user stays
+  aware of borderline calls.
+- top_themes: the biggest storylines this cycle (3-6), each with a one-line Thai "why" and an
   item_count (how many news items covered it, from the context given).
+- topic_summaries: ONE entry for EVERY topic listed under "## All configured watch topics"
+  below - do not skip any, including topics with zero matches this cycle. For a topic with
+  matches, ground the Thai summary in this cycle's actual storylines/tickers/direction. For a
+  topic with no matches this cycle, still write a short, honest Thai note (1-3 sentences)
+  covering: what this topic watches for (from its description), and that nothing meeting it
+  surfaced this cycle - optionally connect it to the broader cycle synthesis if relevant. Never
+  fabricate news that did not appear in the context.
 
 Output JSON only."""
 
@@ -52,10 +63,17 @@ class Theme(BaseModel):
     item_count: int
 
 
+class TopicSummary(BaseModel):
+    topic_id: str
+    topic_name: str
+    summary: str
+
+
 class DigestResult(BaseModel):
     market_mood: Literal["bullish", "bearish", "mixed", "cautious", "quiet"]
     synthesis: str
     top_themes: list[Theme] = Field(default_factory=list)
+    topic_summaries: list[TopicSummary] = Field(default_factory=list)
 
 
 def _load_recommendations(conn: Connection, cycle_id: str) -> list:
@@ -127,7 +145,20 @@ def _load_storyline_summaries(conn: Connection, cycle_id: str) -> list:
     return summaries
 
 
-def render_digest_input(cycle_stats: dict, recommendations: list, storylines: list) -> str:
+def _load_all_topics(conn: Connection) -> list:
+    """Every enabled topic, regardless of whether it matched anything this
+    cycle - the digest prompt must produce a topic_summaries entry for each
+    one (user request: no topic should be left without a Thai summary)."""
+    topics_t = table("topics")
+    rows = conn.execute(
+        select(topics_t.c.id, topics_t.c.name, topics_t.c.description)
+        .where(topics_t.c.enabled.is_(True))
+        .order_by(topics_t.c.name)
+    ).all()
+    return [{"id": str(row.id), "name": row.name, "description": row.description} for row in rows]
+
+
+def render_digest_input(cycle_stats: dict, recommendations: list, storylines: list, all_topics: list) -> str:
     lines = [f"## Cycle stats\n{cycle_stats}", "", "## Triggered recommendations this cycle"]
     if recommendations:
         for r in recommendations:
@@ -148,6 +179,26 @@ def render_digest_input(cycle_stats: dict, recommendations: list, storylines: li
             )
     else:
         lines.append("(no storylines analyzed this cycle)")
+
+    storylines_by_topic: dict[str, list] = {}
+    for s in storylines:
+        for topic_name in s["topics"]:
+            storylines_by_topic.setdefault(topic_name, []).append(s)
+
+    lines.append("")
+    lines.append("## All configured watch topics (produce a topic_summaries entry for EVERY one of these)")
+    for t in all_topics:
+        hits = storylines_by_topic.get(t["name"], [])
+        lines.append(f'- id={t["id"]} name="{t["name"]}": {t["description"]}')
+        if hits:
+            for s in hits:
+                status = "TRIGGERED" if s["triggered"] else "not triggered"
+                lines.append(
+                    f"  this cycle [{status}]: magnitude={s['magnitude']:.2f} confidence={s['confidence']:.2f} "
+                    f"polarity={s['event_polarity']} horizon={s['horizon']}"
+                )
+        else:
+            lines.append("  this cycle: no matches")
 
     return "\n".join(lines)
 
@@ -174,10 +225,21 @@ def _degraded_digest(conn: Connection, *, cycle_id: str) -> DigestResult:
     unanalyzed_count = len(select_storylines(conn))
     top_themes = [Theme(theme=row.theme, why="topic-match count (LLM budget reached this cycle)", item_count=row.cnt) for row in rows]
 
+    all_topics = _load_all_topics(conn)
+    topic_summaries = [
+        TopicSummary(
+            topic_id=t["id"],
+            topic_name=t["name"],
+            summary=f"งบประมาณ LLM สำหรับรอบนี้หมดแล้ว จึงยังไม่มีการวิเคราะห์หัวข้อ \"{t['name']}\" ในรอบนี้",
+        )
+        for t in all_topics
+    ]
+
     return DigestResult(
         market_mood="mixed",
-        synthesis=f"LLM budget reached; {unanalyzed_count} storylines unanalyzed.",
+        synthesis=f"งบประมาณ LLM ในรอบนี้หมดแล้ว ยังไม่ได้วิเคราะห์ {unanalyzed_count} สตอรี่ไลน์",
         top_themes=top_themes,
+        topic_summaries=topic_summaries,
     )
 
 
@@ -199,7 +261,8 @@ def run_digest(conn: Connection, *, cycle_id: str, budget_hit: bool) -> dict:
         cycle_stats = conn.execute(select(cycles_t.c.stats).where(cycles_t.c.id == cycle_id)).scalar_one()
         recommendations = _load_recommendations(conn, cycle_id)
         storylines = _load_storyline_summaries(conn, cycle_id)
-        user_content = render_digest_input(cycle_stats, recommendations, storylines)
+        all_topics = _load_all_topics(conn)
+        user_content = render_digest_input(cycle_stats, recommendations, storylines, all_topics)
 
         call_result = client.call_structured(
             conn,
@@ -227,6 +290,7 @@ def run_digest(conn: Connection, *, cycle_id: str, budget_hit: bool) -> dict:
             market_mood=result.market_mood,
             synthesis=result.synthesis,
             top_themes=[t.model_dump() for t in result.top_themes],
+            topic_summaries=[t.model_dump() for t in result.topic_summaries],
         )
         .on_conflict_do_nothing(index_elements=["cycle_id"])
     )

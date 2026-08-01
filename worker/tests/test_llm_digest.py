@@ -140,23 +140,29 @@ def test_run_digest_calls_llm_and_writes_digest_row(env, monkeypatch):
 
         response_json = (
             '{"market_mood": "mixed", "synthesis": "A quiet cycle overall.", '
-            '"top_themes": [{"theme": "Test theme", "why": "test", "item_count": 1}]}'
-        )
+            '"top_themes": [{"theme": "Test theme", "why": "test", "item_count": 1}], '
+            '"topic_summaries": [{"topic_id": "%s", "topic_name": "t", "summary": "สรุปภาษาไทย"}]}'
+        ) % env["topic_id"]
         fake = _FakeAnthropicClient([_message(response_json)])
         monkeypatch.setattr(client.anthropic, "Anthropic", lambda api_key: fake)
 
         stats = digest.run_digest(conn, cycle_id=env["cycle_id"], budget_hit=False)
 
         row = conn.execute(
-            select(table("digests").c.market_mood, table("digests").c.synthesis, table("digests").c.top_themes).where(
-                table("digests").c.cycle_id == env["cycle_id"]
-            )
+            select(
+                table("digests").c.market_mood,
+                table("digests").c.synthesis,
+                table("digests").c.top_themes,
+                table("digests").c.topic_summaries,
+            ).where(table("digests").c.cycle_id == env["cycle_id"])
         ).first()
 
     assert stats["digest_degraded"] is False
     assert row.market_mood == "mixed"
     assert row.synthesis == "A quiet cycle overall."
     assert row.top_themes[0]["theme"] == "Test theme"
+    assert row.topic_summaries[0]["topic_id"] == env["topic_id"]
+    assert row.topic_summaries[0]["summary"] == "สรุปภาษาไทย"
     assert len(fake.messages.calls) == 1
 
 
@@ -173,16 +179,21 @@ def test_run_digest_budget_hit_skips_llm_and_uses_topic_match_counts(env, monkey
         stats = digest.run_digest(conn, cycle_id=env["cycle_id"], budget_hit=True)
 
         row = conn.execute(
-            select(table("digests").c.market_mood, table("digests").c.synthesis, table("digests").c.top_themes).where(
-                table("digests").c.cycle_id == env["cycle_id"]
-            )
+            select(
+                table("digests").c.market_mood,
+                table("digests").c.synthesis,
+                table("digests").c.top_themes,
+                table("digests").c.topic_summaries,
+            ).where(table("digests").c.cycle_id == env["cycle_id"])
         ).first()
 
     assert stats["digest_degraded"] is True
     assert row.market_mood == "mixed"
-    assert "budget reached" in row.synthesis.lower()
+    assert "งบประมาณ" in row.synthesis  # Thai for "budget" - degraded synthesis is Thai now
     assert len(fake.messages.calls) == 0
     assert any(t["item_count"] == 1 for t in row.top_themes)
+    # degraded path still covers every topic, Thai-language, even with no LLM call
+    assert any(t["topic_id"] == env["topic_id"] and "งบประมาณ" in t["summary"] for t in row.topic_summaries)
 
 
 def test_run_digest_is_idempotent_on_rerun(env, monkeypatch):

@@ -39,6 +39,8 @@ export interface BoardTopic {
   recentHeadlines: { title: string; newsItemId: string; matchedAt: string }[];
   impactedTickers: string[];
   stockSignals: StockSignal[];
+  latestSummaryTh: string | null;
+  latestSummaryAt: string | null;
   mappings: BoardMapping[];
 }
 
@@ -126,6 +128,16 @@ export function TopicCard({ topic }: { topic: BoardTopic }) {
           <span>{topic.hits48h} hit(s) / 48h</span>
           <span>last triggered: {topic.lastTriggeredAt ? relativeFromNow(topic.lastTriggeredAt) : "never"}</span>
         </div>
+
+        {topic.latestSummaryTh && (
+          <div className="rounded-md border bg-muted/40 p-2">
+            <p className="mb-1 flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span>สรุปล่าสุด (AI)</span>
+              {topic.latestSummaryAt && <span className="normal-case">{relativeFromNow(topic.latestSummaryAt)}</span>}
+            </p>
+            <p className="text-xs">{topic.latestSummaryTh}</p>
+          </div>
+        )}
 
         {topic.stockSignals.length > 0 && (
           <div className="flex flex-col gap-2">

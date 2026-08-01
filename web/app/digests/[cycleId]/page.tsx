@@ -15,6 +15,74 @@ const MOOD_VARIANT: Record<string, "success" | "destructive" | "secondary" | "ou
   quiet: "outline",
 };
 
+const SIGNAL_VARIANT: Record<string, "success" | "destructive" | "outline"> = {
+  BUY: "success",
+  SELL: "destructive",
+  "No Action": "outline",
+};
+
+interface RankedTicker {
+  ticker: string;
+  market: string;
+  topics: string[];
+  signal: "BUY" | "SELL" | "No Action";
+  confidence: number | null;
+  asOf: Date | null;
+}
+
+// Ranked BUY/SELL/No Action view across every topic's tickers, "as of" this
+// cycle (latest recommendation with createdAt <= the cycle's own reference
+// time) so a historical digest page stays reproducible rather than always
+// reflecting today's state. Deterministic, not LLM-derived — mirrors the
+// rules engine's own actions (CLAUDE.md: "the LLM never decides triggers").
+async function rankTickerSignals(referenceTime: Date): Promise<RankedTicker[]> {
+  const [mappings, recs] = await Promise.all([
+    prisma.mapping.findMany({
+      where: { enabled: true, topic: { enabled: true } },
+      select: { market: true, tickers: true, topic: { select: { name: true } } },
+    }),
+    prisma.recommendation.findMany({
+      where: { createdAt: { lte: referenceTime } },
+      orderBy: { createdAt: "desc" },
+      select: { tickers: true, action: true, confidence: true, createdAt: true },
+    }),
+  ]);
+
+  const tickerMeta = new Map<string, { market: string; topics: Set<string> }>();
+  for (const m of mappings) {
+    for (const ticker of m.tickers) {
+      const meta = tickerMeta.get(ticker) ?? { market: m.market, topics: new Set<string>() };
+      if (m.topic) meta.topics.add(m.topic.name);
+      tickerMeta.set(ticker, meta);
+    }
+  }
+
+  const ranked: RankedTicker[] = [];
+  for (const [ticker, meta] of tickerMeta) {
+    const hit = recs.find((r) => r.tickers.includes(ticker));
+    let signal: RankedTicker["signal"] = "No Action";
+    if (hit?.action === "BUY") signal = "BUY";
+    else if (hit?.action === "SELL") signal = "SELL";
+    ranked.push({
+      ticker,
+      market: meta.market,
+      topics: Array.from(meta.topics),
+      signal,
+      confidence: hit ? Number(hit.confidence) : null,
+      asOf: hit?.createdAt ?? null,
+    });
+  }
+
+  ranked.sort((a, b) => {
+    const pa = a.signal === "No Action" ? 1 : 0;
+    const pb = b.signal === "No Action" ? 1 : 0;
+    if (pa !== pb) return pa - pb;
+    if (pa === 0) return (b.confidence ?? 0) - (a.confidence ?? 0);
+    return a.ticker.localeCompare(b.ticker);
+  });
+  return ranked;
+}
+
 export default async function DigestDetailPage({ params }: { params: { cycleId: string } }) {
   const cycle = await prisma.cycle.findUnique({
     where: { id: params.cycleId },
@@ -41,13 +109,16 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
 
   if (!cycle) notFound();
 
-  const [prev, next] = await Promise.all([
+  const [prev, next, rankedTickers] = await Promise.all([
     prisma.cycle.findFirst({ where: { scheduledFor: { lt: cycle.scheduledFor } }, orderBy: { scheduledFor: "desc" } }),
     prisma.cycle.findFirst({ where: { scheduledFor: { gt: cycle.scheduledFor } }, orderBy: { scheduledFor: "asc" } }),
+    rankTickerSignals(cycle.finishedAt ?? cycle.scheduledFor),
   ]);
 
   const stats = cycle.stats as Record<string, number | boolean | undefined>;
   const themes = (cycle.digest?.topThemes as { theme: string; why: string; item_count: number }[] | undefined) ?? [];
+  const topicSummaries =
+    (cycle.digest?.topicSummaries as { topic_id: string; topic_name: string; summary: string }[] | undefined) ?? [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -115,6 +186,64 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
         <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
           No digest yet — this cycle hasn&apos;t reached SUMMARIZING.
         </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>อันดับหุ้นแนะนำ (Ranked stock signals) — {rankedTickers.length}</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {rankedTickers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">ยังไม่มีหุ้นในระบบ (no tickers configured across any topic&apos;s mappings yet).</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="py-1 pr-2">#</th>
+                  <th className="py-1 pr-2">Ticker</th>
+                  <th className="py-1 pr-2">Market</th>
+                  <th className="py-1 pr-2">Signal</th>
+                  <th className="py-1 pr-2">Confidence</th>
+                  <th className="py-1 pr-2">As of</th>
+                  <th className="py-1 pr-2">Topics</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rankedTickers.map((t, i) => (
+                  <tr key={t.ticker} className="border-b last:border-0">
+                    <td className="py-1.5 pr-2 text-xs text-muted-foreground">{i + 1}</td>
+                    <td className="py-1.5 pr-2 font-medium">{t.ticker}</td>
+                    <td className="py-1.5 pr-2">{t.market}</td>
+                    <td className="py-1.5 pr-2">
+                      <Badge variant={SIGNAL_VARIANT[t.signal]}>{t.signal}</Badge>
+                    </td>
+                    <td className="py-1.5 pr-2">{t.confidence !== null ? t.confidence.toFixed(2) : "—"}</td>
+                    <td className="py-1.5 pr-2 text-xs text-muted-foreground">
+                      {t.asOf ? formatDateTimeBangkok(t.asOf) : "—"}
+                    </td>
+                    <td className="py-1.5 pr-2 text-xs text-muted-foreground">{t.topics.join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      {topicSummaries.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>สรุปรายหัวข้อ (Topic summaries) — {topicSummaries.length}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {topicSummaries.map((t) => (
+              <div key={t.topic_id} className="border-b pb-2 text-sm last:border-0">
+                <p className="font-medium">{t.topic_name}</p>
+                <p className="text-muted-foreground">{t.summary}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Card>

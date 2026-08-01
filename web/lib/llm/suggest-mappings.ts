@@ -14,7 +14,9 @@ const MARKETS_IN_SCOPE =
 
 const SYSTEM_PROMPT = `You are helping a user configure sector/ticker mappings for a new watch topic on a personal financial news-monitoring dashboard (NOT financial advice; nothing is executed automatically).
 
-Given the draft topic below, propose up to 8 mapping rows: which (market, sector) pairs this topic's news would plausibly move, with a short list of liquid, well-known tickers per row (index ETFs or large-caps only), and the polarity (+1 or -1) of what counts as a "positive framing" event for that topic on that sector. Use the '.BK' suffix for Thai SET-listed tickers. These rows are suggestions only - the user will review, edit, and accept or reject each one individually before anything is saved.
+Given the draft topic below, propose up to 10 mapping rows: which (market, sector) pairs this topic's news would plausibly move, with a short list of liquid, well-known tickers per row (index ETFs or large-caps only), and the polarity (+1 or -1) of what counts as a "positive framing" event for that topic on that sector. Use the '.BK' suffix for Thai SET-listed tickers. These rows are suggestions only - the user will review, edit, and accept or reject each one individually before anything is saved.
+
+Coverage requirement: across all US rows combined, include at least 5 distinct US tickers; across all TH rows combined, include at least 5 distinct TH ('.BK') tickers. If the topic's direct impact on one market is thin, broaden to the closest plausible correlated sectors (e.g. regional proxies, supply-chain-linked names, sector ETFs) to reach 5 - stay grounded in a real, explainable mechanism per ticker (state it in that row's note) rather than padding with irrelevant names. Only fall short of 5 in a market if you genuinely cannot name 5 plausibly-linked liquid tickers there, and say why in that row's note.
 
 Output JSON only.
 
@@ -24,8 +26,10 @@ const SCHEMA = {
   type: "object",
   properties: {
     mappings: {
+      // Note: Claude's structured-output json_schema validation rejects
+      // "maxItems" on array types (400 "property 'maxItems' is not
+      // supported") - the row-count cap lives in the prompt text instead.
       type: "array",
-      maxItems: 8,
       items: {
         type: "object",
         properties: {
@@ -71,7 +75,7 @@ export async function suggestMappings(params: {
     system: SYSTEM_PROMPT,
     userContent,
     schema: SCHEMA,
-    maxTokens: 1536,
+    maxTokens: 2048,
   });
 
   return result ? result.mappings : null;

@@ -256,6 +256,12 @@ model Digest {
   marketMood String   @map("market_mood")
   synthesis   String
   topThemes   Json     @map("top_themes")
+  /// Deviation (documented per CLAUDE.md): Thai-language per-topic summary
+  /// for EVERY configured watch topic, not just ones with a hit this cycle
+  /// (user request, not in docs/04 §7's original spec) - array of
+  /// {topic_id, topic_name, summary}. Read by the topic board (latest
+  /// digest's entry per topic) and rendered in full on the digest page.
+  topicSummaries Json  @default("[]") @map("topic_summaries")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   cycle Cycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)

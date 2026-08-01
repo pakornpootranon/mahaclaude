@@ -78,6 +78,18 @@ export async function GET() {
     return { signal: "No Action", confidence: Number(hit.confidence), asOf: hit.createdAt };
   }
 
+  // Latest cycle's per-topic Thai summary (digest-v2), regardless of whether
+  // that topic had any hits that cycle - keyed by topic_id from the JSON blob.
+  const latestDigest = await prisma.digest.findFirst({
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true, topicSummaries: true },
+  });
+  const latestSummaryByTopic = new Map<string, string>();
+  if (latestDigest) {
+    const entries = latestDigest.topicSummaries as { topic_id: string; summary: string }[];
+    for (const e of entries) latestSummaryByTopic.set(e.topic_id, e.summary);
+  }
+
   const headlineRows = await prisma.$queryRaw<
     { topic_id: string; title: string; news_item_id: string; matched_at: Date }[]
   >`
@@ -132,6 +144,8 @@ export async function GET() {
       recentHeadlines: headlinesByTopic.get(topic.id) ?? [],
       impactedTickers,
       stockSignals,
+      latestSummaryTh: latestSummaryByTopic.get(topic.id) ?? null,
+      latestSummaryAt: latestDigest && latestSummaryByTopic.has(topic.id) ? latestDigest.createdAt.toISOString() : null,
       mappings: topicMappings.map((m) => ({
         id: m.id,
         market: m.market,

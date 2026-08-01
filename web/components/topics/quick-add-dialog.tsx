@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,6 +40,21 @@ export function QuickAddTopicDialog({ onCreated }: { onCreated: () => void }) {
   const [suggesting, setSuggesting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Distinct ticker counts across currently-accepted rows, per market — lets
+  // the user see at a glance whether the "at least 5 US + 5 TH" coverage the
+  // suggest-mappings prompt targets actually landed (and stays live as they
+  // accept/reject/edit rows).
+  const tickerCounts = useMemo(() => {
+    const byMarket = new Map<string, Set<string>>();
+    for (const m of mappings) {
+      if (!m.accepted) continue;
+      const set = byMarket.get(m.market) ?? new Set<string>();
+      for (const t of m.tickers) set.add(t);
+      byMarket.set(m.market, set);
+    }
+    return { US: byMarket.get("US")?.size ?? 0, TH: byMarket.get("TH")?.size ?? 0 };
+  }, [mappings]);
 
   function reset() {
     setName("");
@@ -181,13 +196,28 @@ export function QuickAddTopicDialog({ onCreated }: { onCreated: () => void }) {
                 + Row
               </Button>
               <Button type="button" size="sm" variant="secondary" onClick={suggestMappings} disabled={!name || !description || suggesting}>
-                {suggesting ? "Asking Claude…" : "Suggest mappings"}
+                {suggesting ? "Asking Claude…" : "Prepopulate tickers (AI)"}
               </Button>
             </div>
           </div>
 
           {mappings.length === 0 && (
-            <p className="text-xs text-muted-foreground">No mapping rows yet — the topic can still be saved sector-less.</p>
+            <p className="text-xs text-muted-foreground">
+              No mapping rows yet. &quot;Prepopulate tickers&quot; asks Claude, from the name &amp; description above,
+              to propose at least 5 US and 5 Thailand (&quot;.BK&quot;) tickers to review before saving — or add rows
+              manually.
+            </p>
+          )}
+
+          {mappings.length > 0 && (
+            <div className="flex flex-wrap gap-3 text-xs">
+              <span className={tickerCounts.US >= 5 ? "text-muted-foreground" : "font-medium text-amber-600 dark:text-amber-400"}>
+                US tickers: {tickerCounts.US} {tickerCounts.US < 5 && "(target ≥5)"}
+              </span>
+              <span className={tickerCounts.TH >= 5 ? "text-muted-foreground" : "font-medium text-amber-600 dark:text-amber-400"}>
+                Thailand tickers: {tickerCounts.TH} {tickerCounts.TH < 5 && "(target ≥5)"}
+              </span>
+            </div>
           )}
 
           <div className="flex flex-col gap-2">
