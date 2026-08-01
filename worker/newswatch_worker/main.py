@@ -1,6 +1,6 @@
-"""Worker entrypoint: `newswatch run-cycle [--dry]`, `newswatch eval`, and
-`newswatch process-source-tests`. The APScheduler-driven scheduled-cycle
-loop (docs/02-architecture.md §3) lands in a later phase.
+"""Worker entrypoint: `newswatch run-cycle [--dry]`, `newswatch eval`,
+`newswatch process-source-tests`, and `newswatch serve` (the long-running
+APScheduler loop, docs/02-architecture.md §3).
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import sys
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
 from newswatch_worker.eval import print_drift_report, run_eval
+from newswatch_worker.scheduler import run_forever
 from newswatch_worker.source_tests import process_pending_source_tests
 
 logging.basicConfig(
@@ -44,6 +45,11 @@ def cli(argv: list[str] | None = None) -> int:
         help="Run golden-fixture triage/analysis drift report against the live API (docs/04 §10).",
     )
 
+    subparsers.add_parser(
+        "serve",
+        help="Run forever: scheduled cycles per settings['schedule'], manual-run and source_tests polling (arch §3).",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run-cycle":
@@ -68,6 +74,10 @@ def cli(argv: list[str] | None = None) -> int:
             reports = run_eval(conn)
         all_passed = print_drift_report(reports)
         return 0 if all_passed else 1
+
+    if args.command == "serve":
+        run_forever()
+        return 0
 
     parser.error(f"unknown command: {args.command}")
     return 2

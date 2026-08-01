@@ -8,7 +8,6 @@ RUN uv sync --no-dev
 
 COPY . .
 
-# Placeholder CMD: runs one cycle to completion and exits. Replaced by the
-# APScheduler cron loop (docs/02-architecture.md §3) once a later phase has
-# real ingest/LLM/rules work worth scheduling.
-CMD ["uv", "run", "python", "-m", "newswatch_worker.main", "run-cycle"]
+# Long-running: scheduled cycles per settings['schedule'], manual-run and
+# source_tests polling (docs/02-architecture.md §3, scheduler.py).
+CMD ["uv", "run", "python", "-m", "newswatch_worker.main", "serve"]

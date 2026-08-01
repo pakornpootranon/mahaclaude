@@ -48,3 +48,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     throw err;
   }
 }
+
+// DELETE /api/mappings/:id - the Topics editor's per-row remove action
+// (docs/05 §7). Unlike disabling, this actually removes the row.
+export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await prisma.mapping.delete({ where: { id: params.id } });
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+      return jsonError("mapping not found", 404);
+    }
+    throw err;
+  }
+}

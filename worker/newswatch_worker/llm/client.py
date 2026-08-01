@@ -31,6 +31,7 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -39,7 +40,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.engine import Connection
 
-from newswatch_worker.db import table
+from newswatch_worker.db import get_engine, table
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,33 @@ def resolve_api_key(conn: Connection) -> str | None:
     if row is not None and row[0]:
         return row[0]
     return os.environ.get("ANTHROPIC_API_KEY")
+
+
+def mark_key_status(status: str) -> None:
+    """docs/04 §1: 'On 401, mark key invalid in health strip.' Scoped to the
+    DB-stored key row only (WHERE key=...) — a no-op (0 rows) when the
+    ANTHROPIC_API_KEY env fallback is in use, since there's no row to mark
+    and the rotation flow this exists for is specifically the Settings UI's
+    DB-stored key (docs/02 §9, PRD acceptance #7).
+
+    Opens its OWN connection/transaction rather than taking the caller's
+    `conn` — a 401 always propagates back up as an exception (see _create
+    below), which rolls back whatever transaction it's raised inside
+    (cycle.py's per-state `with engine.begin()` block). Writing through the
+    caller's conn would make this status update vanish along with that
+    rollback, exactly the "on 401, mark key invalid" behavior it exists to
+    provide. Same reasoning as cycle.py's own error-recording, which is
+    already commented "runs in its own transaction since the enclosing one
+    is about to roll back."
+    """
+    engine = get_engine()
+    secrets_t = table("secrets")
+    with engine.begin() as status_conn:
+        status_conn.execute(
+            secrets_t.update()
+            .where(secrets_t.c.key == "anthropic_api_key")
+            .values(status=status, last_checked_at=datetime.now(timezone.utc))
+        )
 
 
 def month_to_date_spend(conn: Connection) -> float:
@@ -334,7 +362,20 @@ def call_structured(
             cost_usd=cost,
         )
 
-    message = client.messages.create(messages=messages, **kwargs)
+    def _create(**call_kwargs) -> anthropic.types.Message:
+        # docs/04 §1: "on 401, mark key invalid in health strip." A 401 means
+        # every subsequent call will fail too, so this re-raises rather than
+        # retrying — cycle.py's generic exception handler leaves the cycle
+        # resumable, same as any other unexpected failure.
+        try:
+            msg = client.messages.create(**call_kwargs)
+        except anthropic.AuthenticationError:
+            mark_key_status("invalid")
+            raise
+        mark_key_status("valid")
+        return msg
+
+    message = _create(messages=messages, **kwargs)
     _record(message)
     text_out = _response_text(message)
 
@@ -358,7 +399,7 @@ def call_structured(
         )
         try:
             check_budget(conn, llm_settings)
-            repair_message = client.messages.create(messages=messages, **kwargs)
+            repair_message = _create(messages=messages, **kwargs)
         except BudgetExceededError:
             logger.warning("purpose=%s model=%s budget exhausted before repair retry", purpose, model)
             return None

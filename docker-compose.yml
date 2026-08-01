@@ -26,6 +26,14 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://newswatch:newswatch@db:5432/newswatch
+      # web never uses these to make calls (arch §9: those secrets are
+      # env-only, worker-side) - it only checks presence, for the MCP
+      # connectors page's "env-var set/unset" indicator (docs/05 §7) and
+      # Sources' non-MCP key-required types. Values never leave this
+      # process; only a boolean "is it set" crosses into any API response.
+      FINNHUB_KEY: ${FINNHUB_KEY:-}
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      BIGDATA_API_KEY: ${BIGDATA_API_KEY:-}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:

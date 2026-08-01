@@ -44,16 +44,31 @@ def _message(text: str, *, input_tokens: int = 10, output_tokens: int = 5) -> Me
     )
 
 
-class _FakeMessages:
-    """Queues canned Message responses, one per call.messages.create()."""
+def _auth_error() -> Exception:
+    import httpx
 
-    def __init__(self, responses: list[Message]):
+    response = httpx.Response(
+        401,
+        request=httpx.Request("POST", "https://api.anthropic.com/v1/messages"),
+        json={"error": {"message": "invalid x-api-key"}},
+    )
+    return client.anthropic.AuthenticationError("invalid x-api-key", response=response, body=None)
+
+
+class _FakeMessages:
+    """Queues canned Message responses (or exceptions to raise), one per
+    call.messages.create()."""
+
+    def __init__(self, responses: list[Message | Exception]):
         self._responses = list(responses)
         self.calls: list[dict] = []
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        return self._responses.pop(0)
+        item = self._responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
 
 
 class _FakeAnthropicClient:
@@ -334,3 +349,88 @@ def test_call_structured_raises_for_unpriced_model_before_calling_api(db_conn, m
             user_content="analyze this",
         )
     assert fake.messages.calls == []
+
+
+@pytest.fixture
+def secret_row():
+    # mark_key_status() opens its own committed transaction (see its
+    # docstring - status writes must survive the caller's transaction
+    # rolling back on a 401), so this row needs to be genuinely committed
+    # too, not inserted via db_conn's still-open transaction, or
+    # mark_key_status's separate connection would never see it exists.
+    from newswatch_worker.db import get_engine, table
+
+    engine = get_engine()
+    secrets_t = table("secrets")
+    with engine.begin() as conn:
+        conn.execute(secrets_t.insert().values(key="anthropic_api_key", value="sk-ant-real-looking", last4="king"))
+    yield
+    with engine.begin() as conn:
+        conn.execute(secrets_t.delete().where(secrets_t.c.key == "anthropic_api_key"))
+
+
+def _secret_status(conn) -> str:
+    from sqlalchemy import select
+
+    from newswatch_worker.db import table
+
+    secrets_t = table("secrets")
+    return conn.execute(
+        select(secrets_t.c.status).where(secrets_t.c.key == "anthropic_api_key")
+    ).scalar_one()
+
+
+def test_call_structured_marks_db_key_invalid_on_401(db_conn, monkeypatch, secret_row):
+    fake = _FakeAnthropicClient([_auth_error()])
+    monkeypatch.setattr(client.anthropic, "Anthropic", lambda api_key: fake)
+
+    with pytest.raises(client.anthropic.AuthenticationError):
+        client.call_structured(
+            db_conn,
+            cycle_id=None,
+            purpose="test",
+            model="claude-haiku-4-5",
+            reasoning="off",
+            output_model=_Result,
+            system="sys",
+            user_content="analyze this",
+        )
+
+    assert _secret_status(db_conn) == "invalid"
+
+
+def test_call_structured_marks_db_key_valid_on_success(db_conn, monkeypatch, secret_row):
+    from newswatch_worker.db import get_engine, table
+
+    # Committed via a separate connection, not db_conn's still-open
+    # transaction: mark_key_status() (called inside call_structured below)
+    # opens its OWN transaction to update this same row, which would
+    # otherwise block forever waiting on the row lock db_conn's
+    # uncommitted UPDATE would be holding - a self-deadlock, since
+    # db_conn's transaction only commits after this test function returns.
+    secrets_t = table("secrets")
+    with get_engine().begin() as setup_conn:
+        setup_conn.execute(secrets_t.update().where(secrets_t.c.key == "anthropic_api_key").values(status="invalid"))
+
+    fake = _FakeAnthropicClient([_message('{"story_key": "s1", "magnitude": 0.5, "impacts": []}')])
+    monkeypatch.setattr(client.anthropic, "Anthropic", lambda api_key: fake)
+
+    result = client.call_structured(
+        db_conn,
+        cycle_id=None,
+        purpose="test",
+        model="claude-haiku-4-5",
+        reasoning="off",
+        output_model=_Result,
+        system="sys",
+        user_content="analyze this",
+    )
+
+    assert result is not None
+    assert _secret_status(db_conn) == "valid"
+
+
+def test_mark_key_status_is_noop_when_using_env_fallback():
+    # No secrets row inserted here - resolve_api_key would fall back to
+    # ANTHROPIC_API_KEY. mark_key_status should affect zero rows, not error.
+    client.mark_key_status("invalid")

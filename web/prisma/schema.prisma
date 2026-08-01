@@ -22,6 +22,11 @@
 // on each storyline's items, but the spec's news_items schema has no field
 // to carry triage's per-item matched_topic_ids output from the TRIAGING
 // cycle state to ANALYZING — see llm/watch_context.py and llm/analyze.py.
+//
+// Fourth deviation: `secrets.status`/`secrets.last_checked_at` are not in
+// docs/03-data-model.md §2.12. docs/04-llm-pipeline.md §1 requires "on 401,
+// mark key invalid in health strip" but the spec's secrets schema has
+// nowhere to persist that — see llm/client.py's mark_key_status().
 
 generator client {
   provider = "prisma-client-js"
@@ -262,7 +267,14 @@ model Digest {
 model Setting {
   key       String   @id
   value     Json
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  // @updatedAt (not @default(now())): scheduler.py's "settings-changed"
+  // poll (docs/02 §3, FR-C5 no-restart-on-schedule-edit) depends on this
+  // column actually bumping on every UPDATE. @default(now()) only sets it
+  // at INSERT time — a real bug caught by scheduler.py's own tests, since
+  // every settings write in this app goes through Prisma Client (the
+  // worker only reads this table), @updatedAt's auto-bump on every write
+  // is sufficient here without a DB trigger.
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("settings")
 }
@@ -287,10 +299,18 @@ model LlmCall {
 /// 2.12 secrets — UI-managed secrets (arch §9). Never joined into any
 /// export/read API; /api/config/llm GET returns only {set, last4}.
 model Secret {
-  key       String   @id
+  key       String    @id
   value     String
   last4     String
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  // Fourth deviation (see file header): docs/04 §1 requires "on 401, mark
+  // key invalid in health strip", but docs/03 §2.12 has no field to persist
+  // that state. status/lastCheckedAt are updated by llm/client.py on every
+  // call that uses this row's key (never for the ANTHROPIC_API_KEY env
+  // fallback, which has no row here to update) — 'unknown' until the first
+  // call, then 'valid'/'invalid' from then on.
+  status        String    @default("unknown") @map("status")
+  lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz
 
   @@map("secrets")
 }
