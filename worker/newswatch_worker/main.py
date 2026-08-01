@@ -12,6 +12,7 @@ import sys
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
 from newswatch_worker.eval import print_drift_report, print_pm_drift_report, run_eval, run_pm_eval
+from newswatch_worker.outcomes import run_outcomes_job
 from newswatch_worker.scheduler import run_forever
 from newswatch_worker.source_tests import process_pending_source_tests
 
@@ -50,6 +51,11 @@ def cli(argv: list[str] | None = None) -> int:
         help="Run forever: scheduled cycles per settings['schedule'], manual-run and source_tests polling (arch §3).",
     )
 
+    subparsers.add_parser(
+        "run-outcomes",
+        help="Run the outcomes job once: T+1/3/7 stock returns (yfinance) and Polymarket price drift/resolution (arch §7).",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "run-cycle":
@@ -80,6 +86,13 @@ def cli(argv: list[str] | None = None) -> int:
 
     if args.command == "serve":
         run_forever()
+        return 0
+
+    if args.command == "run-outcomes":
+        engine = get_engine()
+        with engine.begin() as conn:
+            stats = run_outcomes_job(conn)
+        print(f"outcomes job: {stats}")
         return 0
 
     parser.error(f"unknown command: {args.command}")

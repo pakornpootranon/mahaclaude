@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/digests", label: "Digests" },
   { href: "/topics", label: "Topics" },
   { href: "/polymarket", label: "Polymarket" },
+  { href: "/history", label: "History" },
   { href: "/settings", label: "Settings" },
 ];
 

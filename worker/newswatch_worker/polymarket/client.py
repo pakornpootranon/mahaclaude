@@ -45,6 +45,7 @@ class PmMarketDTO:
     liquidity_usd: float | None
     active: bool
     closed: bool
+    resolution: str | None = None
 
 
 def _parse_list_field(value: Any) -> list:
@@ -98,6 +99,22 @@ def _category_from_tags(raw_market: dict) -> str | None:
     return raw_market.get("category")
 
 
+def _infer_resolution(*, closed: bool, yes_price: float | None) -> str | None:
+    """Gamma's exact field for a market's resolved outcome could not be
+    confirmed against a live call from this sandbox (see module docstring),
+    so resolution is inferred from the closed flag plus how far the YES
+    price has settled toward 0 or 1 — real resolved markets converge there.
+    'INVALID' covers a closed market whose price never settled cleanly
+    (e.g. a voided/ambiguous resolution)."""
+    if not closed or yes_price is None:
+        return None
+    if yes_price >= 0.99:
+        return "YES"
+    if yes_price <= 0.01:
+        return "NO"
+    return "INVALID"
+
+
 def parse_market(raw: dict) -> PmMarketDTO | None:
     market_id = raw.get("conditionId") or raw.get("id")
     question = raw.get("question")
@@ -107,6 +124,8 @@ def parse_market(raw: dict) -> PmMarketDTO | None:
 
     outcomes = _parse_list_field(raw.get("outcomes"))
     prices = _parse_list_field(raw.get("outcomePrices"))
+    closed = bool(raw.get("closed", False))
+    yes_price = _yes_price(outcomes, prices)
 
     return PmMarketDTO(
         id=str(market_id),
@@ -114,11 +133,12 @@ def parse_market(raw: dict) -> PmMarketDTO | None:
         slug=str(slug),
         category=_category_from_tags(raw),
         end_date=_parse_end_date(raw.get("endDate")),
-        yes_price=_yes_price(outcomes, prices),
+        yes_price=yes_price,
         volume_24h_usd=_to_float(raw.get("volume24hr")),
         liquidity_usd=_to_float(raw.get("liquidity")),
         active=bool(raw.get("active", False)),
-        closed=bool(raw.get("closed", False)),
+        closed=closed,
+        resolution=_infer_resolution(closed=closed, yes_price=yes_price),
     )
 
 
@@ -164,6 +184,25 @@ class GammaClient:
             if parsed is not None:
                 markets.append(parsed)
         return markets
+
+    def get_market_by_id(self, market_id: str) -> PmMarketDTO | None:
+        """Fetches one market regardless of active/closed state — needed by
+        the outcomes job (docs/02 §7) to track price drift and resolution
+        after a market leaves the active-market scan window. Endpoint shape
+        (GET /markets/{id}) matches the reference client's documented
+        get_market(market_id) method (see module docstring); defensively
+        handles either a bare object or a single-element list response
+        since this sandbox can't confirm which against the live API."""
+        url = f"{self.base_url}/markets/{market_id}"
+        response = polite_get(url)
+        payload = response.json()
+        if isinstance(payload, list):
+            raw = payload[0] if payload else None
+        elif isinstance(payload, dict):
+            raw = payload
+        else:
+            raw = None
+        return parse_market(raw) if raw is not None else None
 
     def get_all_active_markets(self, *, cap: int = 1000) -> list[PmMarketDTO]:
         """Pages through /markets until `cap` is reached or a short page

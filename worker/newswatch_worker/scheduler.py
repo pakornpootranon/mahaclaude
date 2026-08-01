@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
+from newswatch_worker.outcomes import run_outcomes_job
 from newswatch_worker.source_tests import process_pending_source_tests
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,13 @@ logger = logging.getLogger(__name__)
 MANUAL_POLL_SECONDS = 15
 SETTINGS_POLL_SECONDS = 60
 CYCLE_JOB_PREFIX = "cycle-"
+OUTCOMES_JOB_ID = "outcomes-nightly"
+# docs/02 §7: "Nightly at 07:30 Asia/Bangkok (after US close)" — a fixed
+# time, unlike settings['schedule'].cycles which governs digest cycles and
+# is user-configurable. Not wired to any settings key, so it needs no
+# re-scheduling watcher.
+OUTCOMES_HOUR = 7
+OUTCOMES_MINUTE = 30
 
 # A cron-triggered cycle and the manual-request poller could otherwise fire
 # concurrently and each independently decide "nothing resumable, create a
@@ -81,6 +89,15 @@ def _reschedule(scheduler: BackgroundScheduler, schedule_value: dict) -> None:
     logger.info("(re)scheduled %d cycle job(s) in timezone=%s", added, tz)
 
 
+def _run_outcomes_job_safely() -> None:
+    engine = get_engine()
+    try:
+        with engine.begin() as conn:
+            run_outcomes_job(conn)
+    except Exception:
+        logger.exception("outcomes job raised")
+
+
 def _poll_manual_and_source_tests() -> None:
     engine = get_engine()
     cycles_t = table("cycles")
@@ -130,6 +147,12 @@ def run_forever() -> None:
         "interval",
         seconds=SETTINGS_POLL_SECONDS,
         id="poll-schedule-settings",
+    )
+    scheduler.add_job(
+        _run_outcomes_job_safely,
+        CronTrigger(hour=OUTCOMES_HOUR, minute=OUTCOMES_MINUTE, timezone="Asia/Bangkok"),
+        id=OUTCOMES_JOB_ID,
+        misfire_grace_time=3600,
     )
 
     scheduler.start()

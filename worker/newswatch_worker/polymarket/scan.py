@@ -77,6 +77,7 @@ def refresh_pm_markets(conn: Connection, gamma: GammaClient) -> int:
             "liquidity_usd": m.liquidity_usd,
             "active": m.active,
             "resolved": m.closed,
+            "resolution": m.resolution,
             "snapshot_at": now,
         }
         conn.execute(
