@@ -329,6 +329,16 @@ model PmMarket {
   resolved       Boolean   @default(false)
   resolution     String?
   snapshotAt     DateTime  @default(now()) @map("snapshot_at") @db.Timestamptz
+  /// Deviation from docs/03 §2.13 (documented per CLAUDE.md): docs/04 §9's
+  /// scan.py dedup rule ("not already estimated within reestimate_hours")
+  /// has no column to key off in the spec's literal schema — pm_opportunities
+  /// only records markets that PASSED the edge-rule flag, so a market that
+  /// was estimated but didn't clear the edge threshold would otherwise be
+  /// re-estimated (and re-billed) every single cycle forever. Added to track
+  /// every LLM estimate attempt regardless of outcome; set by scan.py after
+  /// each pm-estimate call, read by scan.py's candidate-selection freshness
+  /// filter. Nullable: never estimated yet.
+  lastEstimatedAt DateTime? @map("last_estimated_at") @db.Timestamptz
 
   opportunities PmOpportunity[]
 

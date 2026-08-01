@@ -1,0 +1,37 @@
+[
+  {
+    "conditionId": "0xaaa111",
+    "question": "Will the Fed cut rates at the next FOMC meeting?",
+    "slug": "fed-cut-next-fomc",
+    "tags": [{"id": "1", "label": "Economy"}],
+    "outcomes": "[\"Yes\", \"No\"]",
+    "outcomePrices": "[\"0.62\", \"0.38\"]",
+    "volume24hr": 185000.5,
+    "liquidity": 340000,
+    "endDate": "2026-09-17T23:59:59Z",
+    "active": true,
+    "closed": false
+  },
+  {
+    "conditionId": "0xbbb222",
+    "question": "Will Brent crude close above $95/barrel this month?",
+    "slug": "brent-95-this-month",
+    "tags": [{"id": "2", "label": "Economy"}],
+    "outcomes": ["Yes", "No"],
+    "outcomePrices": [0.3, 0.7],
+    "volume24hr": 42000,
+    "liquidity": 15000,
+    "endDate": "2026-08-31T23:59:59Z",
+    "active": true,
+    "closed": false
+  },
+  {
+    "conditionId": "0xccc333",
+    "question": "Missing question test",
+    "slug": "",
+    "outcomes": "[]",
+    "outcomePrices": "[]",
+    "active": true,
+    "closed": false
+  }
+]

@@ -19,17 +19,23 @@ from pathlib import Path
 
 from sqlalchemy.engine import Connection
 
-from newswatch_worker.llm import analyze, client, triage
+from newswatch_worker.llm import analyze, client, pm_estimate, triage
 from newswatch_worker.llm.watch_context import build_watch_context, short_id_map
 
 logger = logging.getLogger(__name__)
 
 FIXTURES_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "golden_fixtures.json"
+PM_FIXTURES_PATH = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "pm_fixtures.json"
 TOLERANCE = 0.15
 
 
 def load_fixtures() -> list[dict]:
     data = json.loads(FIXTURES_PATH.read_text())
+    return data["fixtures"]
+
+
+def load_pm_fixtures() -> list[dict]:
+    data = json.loads(PM_FIXTURES_PATH.read_text())
     return data["fixtures"]
 
 
@@ -191,4 +197,79 @@ def print_drift_report(reports: list[FixtureReport]) -> bool:
             print(f"    analysis: {note}")
     passed = sum(1 for r in reports if r.passed)
     print(f"\n{passed}/{len(reports)} fixtures passed.")
+    return passed == len(reports)
+
+
+@dataclass
+class PmFixtureReport:
+    fixture_id: str
+    passed: bool
+    notes: list[str] = field(default_factory=list)
+
+
+def _grade_pm_estimate(expected: dict, actual: pm_estimate.PmEstimate) -> tuple[bool, list[str]]:
+    notes = []
+    ok = True
+    if actual.skip != expected["skip"]:
+        ok = False
+        notes.append(f"skip: expected {expected['skip']}, got {actual.skip}")
+    if expected["skip"]:
+        return ok, notes
+    if "est_probability" in expected and abs(actual.est_probability - expected["est_probability"]) > TOLERANCE:
+        ok = False
+        notes.append(
+            f"est_probability: expected {expected['est_probability']}+/-{TOLERANCE}, got {actual.est_probability}"
+        )
+    if "confidence_min" in expected and actual.confidence < expected["confidence_min"]:
+        ok = False
+        notes.append(f"confidence: expected >= {expected['confidence_min']}, got {actual.confidence}")
+    if "confidence_max" in expected and actual.confidence > expected["confidence_max"]:
+        ok = False
+        notes.append(f"confidence: expected <= {expected['confidence_max']}, got {actual.confidence}")
+    return ok, notes
+
+
+def run_pm_eval(conn: Connection) -> list[PmFixtureReport]:
+    fixtures = load_pm_fixtures()
+    llm_settings = client.get_llm_settings(conn)
+    model, reasoning = llm_settings.tier("pm_estimate")
+    today = "2026-08-01 (Saturday)"  # frozen so fixtures are reproducible regardless of run date
+
+    reports: list[PmFixtureReport] = []
+    for fx in fixtures:
+        inp = fx["input"]
+        market = pm_estimate.MarketInput(
+            market_id=f"eval-{fx['id']}",
+            question=inp["question"],
+            market_price=inp["market_price"],
+            end_date=inp.get("end_date"),
+            category=inp.get("category"),
+        )
+        call_result = pm_estimate.estimate_probability(
+            conn,
+            cycle_id=None,
+            market=market,
+            storylines=inp.get("related_storylines", []),
+            model=model,
+            reasoning=reasoning,
+            today=today,
+        )
+        if call_result is None:
+            reports.append(PmFixtureReport(fixture_id=fx["id"], passed=False, notes=["pm-estimate call failed or returned no result"]))
+            continue
+        ok, notes = _grade_pm_estimate(fx["expected"], call_result.parsed)
+        reports.append(PmFixtureReport(fixture_id=fx["id"], passed=ok, notes=notes))
+
+    return reports
+
+
+def print_pm_drift_report(reports: list[PmFixtureReport]) -> bool:
+    """Returns True iff every PM fixture passed."""
+    for r in reports:
+        status = "PASS" if r.passed else "FAIL"
+        print(f"[{status}] {r.fixture_id}")
+        for note in r.notes:
+            print(f"    pm_estimate: {note}")
+    passed = sum(1 for r in reports if r.passed)
+    print(f"\n{passed}/{len(reports)} PM fixtures passed.")
     return passed == len(reports)

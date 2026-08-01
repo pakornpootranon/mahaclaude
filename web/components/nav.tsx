@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/", label: "Action feed" },
   { href: "/digests", label: "Digests" },
   { href: "/topics", label: "Topics" },
+  { href: "/polymarket", label: "Polymarket" },
   { href: "/settings", label: "Settings" },
 ];
 

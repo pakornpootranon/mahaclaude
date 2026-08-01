@@ -1,0 +1,75 @@
+{
+  "_comment": "docs/04-llm-pipeline.md §9/§10: pm-estimate-v1 golden fixtures for `make eval`. Grading (authored, not spec-verbatim - the spec doesn't give PM-specific grading numbers, so this mirrors the triage/analysis philosophy: tolerant on est_probability (+/-0.15), strict on skip). Separate file from golden_fixtures.json since the input shape (a market question, not a news item) differs.",
+  "fixtures": [
+    {
+      "id": "pm-01-fed-cut-consensus",
+      "input": {
+        "question": "Will the Fed cut interest rates at the next FOMC meeting?",
+        "market_price": 0.85,
+        "end_date": "2026-09-17T23:59:59Z",
+        "category": "Economy",
+        "related_storylines": [
+          "fed-signal-01: Fed officials signaled strong openness to a September cut after two straight soft inflation prints. (magnitude=0.60, confidence=0.75)"
+        ]
+      },
+      "expected": { "skip": false, "est_probability": 0.82, "confidence_min": 0.55 }
+    },
+    {
+      "id": "pm-02-near-certain-election-result",
+      "input": {
+        "question": "Will the incumbent government confirm the officially certified election result?",
+        "market_price": 0.98,
+        "end_date": "2026-08-10T23:59:59Z",
+        "category": "Politics",
+        "related_storylines": []
+      },
+      "expected": { "skip": false, "est_probability": 0.97, "confidence_min": 0.5 }
+    },
+    {
+      "id": "pm-03-ambiguous-resolution",
+      "input": {
+        "question": "Will AI 'significantly disrupt' the labor market by year end?",
+        "market_price": 0.4,
+        "end_date": "2026-12-31T23:59:59Z",
+        "category": "Tech",
+        "related_storylines": []
+      },
+      "expected": { "skip": true }
+    },
+    {
+      "id": "pm-04-insider-process-low-confidence",
+      "input": {
+        "question": "Will the central bank's internal policy committee vote unanimously at its next private session?",
+        "market_price": 0.55,
+        "end_date": "2026-09-01T23:59:59Z",
+        "category": "Economy",
+        "related_storylines": []
+      },
+      "expected": { "skip": false, "confidence_max": 0.5 }
+    },
+    {
+      "id": "pm-05-news-driven-oil-supply",
+      "input": {
+        "question": "Will Brent crude close above $95/barrel this month?",
+        "market_price": 0.3,
+        "end_date": "2026-08-31T23:59:59Z",
+        "category": "Economy",
+        "related_storylines": [
+          "oil-hormuz-01: Tensions near the Strait of Hormuz raised fears of a major supply disruption; crude futures jumped on the news. (magnitude=0.65, confidence=0.60)"
+        ]
+      },
+      "expected": { "skip": false, "est_probability": 0.5, "confidence_min": 0.4 }
+    },
+    {
+      "id": "pm-06-base-rate-recession-quarter",
+      "input": {
+        "question": "Will the NBER declare a recession started this quarter?",
+        "market_price": 0.1,
+        "end_date": "2026-10-01T23:59:59Z",
+        "category": "Economy",
+        "related_storylines": []
+      },
+      "expected": { "skip": false, "est_probability": 0.1, "confidence_min": 0.4 }
+    }
+  ]
+}

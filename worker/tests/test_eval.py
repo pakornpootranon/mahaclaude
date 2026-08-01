@@ -117,3 +117,51 @@ def test_run_eval_grades_matching_fixture_pass_and_mismatched_fixture_fail(monke
 
     all_passed = eval_mod.print_drift_report(reports)
     assert all_passed is False
+
+
+_PM_FIXTURES = [
+    {
+        "id": "mechanical-pm-match",
+        "input": {"question": "Will X happen?", "market_price": 0.5, "end_date": None, "category": None},
+        "expected": {"skip": False, "est_probability": 0.6, "confidence_min": 0.5},
+    },
+    {
+        "id": "mechanical-pm-skip-mismatch",
+        "input": {"question": "Ambiguous question?", "market_price": 0.5, "end_date": None, "category": None},
+        "expected": {"skip": True},
+    },
+]
+
+
+def test_run_pm_eval_grades_matching_fixture_pass_and_mismatched_fixture_fail(monkeypatch):
+    from newswatch_worker.db import get_engine
+
+    monkeypatch.setattr(eval_mod, "load_pm_fixtures", lambda: _PM_FIXTURES)
+    monkeypatch.setattr(client, "resolve_api_key", lambda conn: "sk-ant-fake")
+
+    response_1 = (
+        '{"market_id": "eval-mechanical-pm-match", "skip": false, "skip_reason": null, '
+        '"est_probability": 0.62, "confidence": 0.6, "reasoning": "test", "key_uncertainties": ""}'
+    )
+    # Second fixture expects skip=true, but the fake model says skip=false -> FAIL.
+    response_2 = (
+        '{"market_id": "eval-mechanical-pm-skip-mismatch", "skip": false, "skip_reason": null, '
+        '"est_probability": 0.5, "confidence": 0.5, "reasoning": "test", "key_uncertainties": ""}'
+    )
+    fake = _FakeAnthropicClient([_message(response_1), _message(response_2)])
+    monkeypatch.setattr(client.anthropic, "Anthropic", lambda api_key: fake)
+
+    from newswatch_worker.db import table
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        reports = eval_mod.run_pm_eval(conn)
+        conn.execute(table("llm_calls").delete().where(table("llm_calls").c.purpose == "pm_estimate"))
+
+    by_id = {r.fixture_id: r for r in reports}
+    assert by_id["mechanical-pm-match"].passed is True
+    assert by_id["mechanical-pm-skip-mismatch"].passed is False
+    assert any("skip" in note for note in by_id["mechanical-pm-skip-mismatch"].notes)
+
+    all_passed = eval_mod.print_pm_drift_report(reports)
+    assert all_passed is False

@@ -11,7 +11,7 @@ import sys
 
 from newswatch_worker.cycle import run_cycle
 from newswatch_worker.db import get_engine, table
-from newswatch_worker.eval import print_drift_report, run_eval
+from newswatch_worker.eval import print_drift_report, print_pm_drift_report, run_eval, run_pm_eval
 from newswatch_worker.scheduler import run_forever
 from newswatch_worker.source_tests import process_pending_source_tests
 
@@ -72,8 +72,11 @@ def cli(argv: list[str] | None = None) -> int:
         # reflect them (eval.py's module docstring).
         with engine.begin() as conn:
             reports = run_eval(conn)
+            pm_reports = run_pm_eval(conn)
         all_passed = print_drift_report(reports)
-        return 0 if all_passed else 1
+        print()
+        pm_all_passed = print_pm_drift_report(pm_reports)
+        return 0 if all_passed and pm_all_passed else 1
 
     if args.command == "serve":
         run_forever()

@@ -24,6 +24,10 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
         orderBy: { confidence: "desc" },
         include: { topic: { select: { name: true } } },
       },
+      pmOpportunities: {
+        orderBy: { edgePoints: "desc" },
+        include: { market: true },
+      },
     },
   });
 
@@ -120,6 +124,32 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
           </dl>
         </CardContent>
       </Card>
+
+      {cycle.pmOpportunities.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <Link href="/polymarket" className="hover:underline">
+                Polymarket opportunities ({cycle.pmOpportunities.length})
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {cycle.pmOpportunities.map((opp) => (
+              <div key={opp.id} className="flex flex-wrap items-center gap-2 border-b pb-2 text-sm last:border-0">
+                <Badge variant={opp.side === "YES" ? "success" : "destructive"}>{opp.side}</Badge>
+                <Link href={`/polymarket/${opp.id}`} className="hover:underline">
+                  {opp.market.question}
+                </Link>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  edge {Number(opp.edgePoints).toFixed(1)} pts, price {Number(opp.marketPrice).toFixed(2)} → est{" "}
+                  {Number(opp.estProbability).toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

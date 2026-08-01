@@ -5,12 +5,10 @@
                                           (any state) -> FAILED
 
 Each state's step handler must be idempotent so a crashed cycle can be
-re-run safely (PRD acceptance #4). Handlers not yet backed by a real
-implementation are no-ops until their owning phase (triage/analysis/rules:
-Phase 3; Polymarket scanning: Phase 5b) replaces them, without touching the
-driver loop below. `--dry` (main.py) skips calling *any* handler, real or
-not, so it stays a pure state-machine walk regardless of which phases have
-landed.
+re-run safely (PRD acceptance #4). All states now have real handlers
+(triage/analysis/rules: Phase 3; Polymarket scanning: Phase 5b). `--dry`
+(main.py) skips calling *any* handler, so it stays a pure state-machine walk
+regardless of which phases have landed.
 
 Crash-resume design: the state transition (UPDATE cycles SET state = ...)
 only commits *after* the step handler for the current state returns. If the
@@ -55,10 +53,6 @@ class CycleContext:
     cycle_id: str
     conn: Connection
     dry: bool
-
-
-def _noop_step(ctx: CycleContext) -> None:
-    """Placeholder for a not-yet-implemented phase's cycle step."""
 
 
 def _merge_stats(conn: Connection, cycle_id: str, new_stats: dict) -> None:
@@ -137,7 +131,15 @@ def _pm_scanning_step(ctx: CycleContext) -> None:
     enabled = bool(row and row[0].get("enabled", True))
     if not enabled:
         logger.info("cycle=%s polymarket disabled, skipping PM_SCANNING", ctx.cycle_id)
-    # Scan/match/estimate logic lands in Phase 5b.
+        return
+
+    from newswatch_worker.polymarket.scan import run_pm_scanning
+
+    stats = run_pm_scanning(ctx.conn, cycle_id=ctx.cycle_id)
+    _merge_stats(ctx.conn, ctx.cycle_id, stats)
+    if stats.get("budget_hit"):
+        _mark_budget_hit(ctx.conn, ctx.cycle_id)
+    logger.info("cycle=%s polymarket scan stats: %s", ctx.cycle_id, stats)
 
 
 STEP_HANDLERS: dict[str, Callable[[CycleContext], None]] = {

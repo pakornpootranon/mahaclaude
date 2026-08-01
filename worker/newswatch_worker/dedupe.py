@@ -49,3 +49,9 @@ def recommendation_dedupe_key(
     ticker_or_sector = ",".join(sorted(tickers)) if tickers else sector
     raw = f"{topic_id or 'unconfigured'}|{ticker_or_sector}|{action}|{window_bucket}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def pm_opportunity_dedupe_key(*, market_id: str, side: str, window_bucket: int) -> str:
+    """docs/03 §2.14: pm_opportunities.dedupe_key = sha256(market_id|side|window_bucket)."""
+    raw = f"{market_id}|{side}|{window_bucket}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
