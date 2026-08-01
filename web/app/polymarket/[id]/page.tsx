@@ -19,8 +19,6 @@ export default async function PmOpportunityDetailPage({ params }: { params: { id
 
   if (!opp) notFound();
 
-  const marketUrl = `https://polymarket.com/event/${opp.market.slug}`;
-
   return (
     <div className="flex flex-col gap-4">
       <Link href="/polymarket" className="text-sm text-muted-foreground hover:underline">
@@ -49,9 +47,9 @@ export default async function PmOpportunityDetailPage({ params }: { params: { id
             {opp.market.volume24hUsd !== null && <span>24h volume: ${Number(opp.market.volume24hUsd).toLocaleString()}</span>}
             {opp.market.endDate && <span>resolves: {formatDateTimeBangkok(opp.market.endDate)}</span>}
           </div>
-          <a href={marketUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-primary hover:underline">
-            View live market on polymarket.com ↗
-          </a>
+          <p className="text-xs text-muted-foreground">
+            Link to the live market on polymarket.com is coming in a future version.
+          </p>
         </CardContent>
       </Card>
 

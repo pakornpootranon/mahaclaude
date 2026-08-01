@@ -18,6 +18,14 @@ export interface BoardMapping {
   note: string | null;
 }
 
+export interface StockSignal {
+  market: string;
+  ticker: string;
+  signal: "BUY" | "SELL" | "No Action" | string;
+  confidence: number | null;
+  asOf: string | null;
+}
+
 export interface BoardTopic {
   id: string;
   name: string;
@@ -30,6 +38,7 @@ export interface BoardTopic {
   lastTriggeredAt: string | null;
   recentHeadlines: { title: string; newsItemId: string; matchedAt: string }[];
   impactedTickers: string[];
+  stockSignals: StockSignal[];
   mappings: BoardMapping[];
 }
 
@@ -38,6 +47,36 @@ const STATUS_VARIANT: Record<BoardTopic["status"], "outline" | "secondary" | "de
   active: "secondary",
   hot: "destructive",
 };
+
+const SIGNAL_VARIANT: Record<string, "success" | "destructive" | "outline"> = {
+  BUY: "success",
+  SELL: "destructive",
+  "No Action": "outline",
+};
+
+const MARKET_GROUP_LABEL: Record<string, string> = {
+  US: "US stocks",
+  TH: "Thailand stocks",
+};
+
+function groupSignalsByMarket(signals: StockSignal[]): { label: string; signals: StockSignal[] }[] {
+  const order = ["US", "TH"];
+  const byMarket = new Map<string, StockSignal[]>();
+  for (const s of signals) {
+    const list = byMarket.get(s.market) ?? [];
+    list.push(s);
+    byMarket.set(s.market, list);
+  }
+  const groups: { label: string; signals: StockSignal[] }[] = [];
+  for (const market of order) {
+    const list = byMarket.get(market);
+    if (list?.length) groups.push({ label: MARKET_GROUP_LABEL[market] ?? market, signals: list });
+  }
+  for (const [market, list] of byMarket) {
+    if (!order.includes(market)) groups.push({ label: MARKET_GROUP_LABEL[market] ?? market, signals: list });
+  }
+  return groups;
+}
 
 export function TopicCard({ topic }: { topic: BoardTopic }) {
   const [mappings, setMappings] = useState(topic.mappings);
@@ -88,12 +127,24 @@ export function TopicCard({ topic }: { topic: BoardTopic }) {
           <span>last triggered: {topic.lastTriggeredAt ? relativeFromNow(topic.lastTriggeredAt) : "never"}</span>
         </div>
 
-        {topic.impactedTickers.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {topic.impactedTickers.map((t) => (
-              <Badge key={t} variant="secondary" className="text-[10px]">
-                {t}
-              </Badge>
+        {topic.stockSignals.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs font-medium text-muted-foreground">Stock signals</p>
+            {groupSignalsByMarket(topic.stockSignals).map((group) => (
+              <div key={group.label}>
+                <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">{group.label}</p>
+                <div className="flex flex-col gap-1">
+                  {group.signals.map((s) => (
+                    <div key={`${s.market}-${s.ticker}`} className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+                      <span className="font-medium">{s.ticker}</span>
+                      <Badge variant={SIGNAL_VARIANT[s.signal] ?? "outline"} className="ml-auto">
+                        {s.signal}
+                      </Badge>
+                      {s.confidence !== null && <span className="text-muted-foreground">conf {s.confidence.toFixed(2)}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}

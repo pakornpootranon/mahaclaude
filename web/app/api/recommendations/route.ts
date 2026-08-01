@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       topic: { select: { id: true, name: true } },
-      analysis: { select: { id: true, storyKey: true } },
+      analysis: { select: { id: true, storyKey: true, magnitude: true, result: true } },
       sources: {
         take: 3,
         include: { newsItem: { include: { source: { select: { name: true } } } } },
@@ -49,24 +49,30 @@ export async function GET(request: NextRequest) {
   const items = hasMore ? rows.slice(0, limit) : rows;
 
   return NextResponse.json({
-    items: items.map((r) => ({
-      id: r.id,
-      action: r.action,
-      market: r.market,
-      sector: r.sector,
-      tickers: r.tickers,
-      confidence: r.confidence,
-      reasoning: r.reasoning,
-      createdAt: r.createdAt,
-      topic: r.topic,
-      analysisId: r.analysis.id,
-      storyKey: r.analysis.storyKey,
-      sources: r.sources.map((s) => ({
-        title: s.newsItem.title,
-        url: s.newsItem.url,
-        sourceName: s.newsItem.source.name,
-      })),
-    })),
+    items: items.map((r) => {
+      const result = r.analysis.result as { horizon?: string; caveats?: string } | null;
+      return {
+        id: r.id,
+        action: r.action,
+        market: r.market,
+        sector: r.sector,
+        tickers: r.tickers,
+        confidence: r.confidence,
+        reasoning: r.reasoning,
+        createdAt: r.createdAt,
+        topic: r.topic,
+        analysisId: r.analysis.id,
+        storyKey: r.analysis.storyKey,
+        magnitude: r.analysis.magnitude,
+        horizon: result?.horizon ?? null,
+        caveats: result?.caveats ?? null,
+        sources: r.sources.map((s) => ({
+          title: s.newsItem.title,
+          url: s.newsItem.url,
+          sourceName: s.newsItem.source.name,
+        })),
+      };
+    }),
     nextCursor: hasMore ? items[items.length - 1]!.id : null,
   });
 }

@@ -13,18 +13,45 @@ interface HealthPayload {
     state: string;
     budgetHit: boolean;
     error: string | null;
+    startedAt: string | null;
     finishedAt: string | null;
   } | null;
   sources: { id: string; name: string; enabled: boolean; health: string; lastSuccessAt: string | null }[];
   spend: { monthToDateUsd: number; capUsd: number | null };
 }
 
-const POLL_MS = 30_000;
+const IDLE_POLL_MS = 30_000;
+const RUNNING_POLL_MS = 5_000;
+
+const TERMINAL_STATES = new Set(["DONE", "FAILED"]);
+
+// Friendlier labels for the cycle state machine (worker/newswatch_worker/cycle.py STATES).
+const STATE_LABELS: Record<string, string> = {
+  PENDING: "queued",
+  INGESTING: "ingesting news",
+  TRIAGING: "triaging",
+  ANALYZING: "analyzing storylines",
+  TRIGGERING: "evaluating rules",
+  PM_SCANNING: "scanning polymarket",
+  SUMMARIZING: "writing digest",
+  DONE: "done",
+  FAILED: "failed",
+};
 
 function cycleStateVariant(state: string): "default" | "success" | "destructive" | "secondary" {
   if (state === "DONE") return "success";
   if (state === "FAILED") return "destructive";
   return "secondary";
+}
+
+function formatElapsed(since: string): string {
+  const ms = Date.now() - new Date(since).getTime();
+  const min = Math.max(0, Math.round(ms / 60000));
+  if (min < 1) return "just started";
+  if (min < 60) return `running ${min}m`;
+  const hr = Math.floor(min / 60);
+  const rem = min % 60;
+  return `running ${hr}h ${rem}m`;
 }
 
 export function StatusBar() {
@@ -41,11 +68,18 @@ export function StatusBar() {
     }
   }, []);
 
+  const isRunning = health?.lastCycle ? !TERMINAL_STATES.has(health.lastCycle.state) : false;
+
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, POLL_MS);
-    return () => clearInterval(id);
   }, [refresh]);
+
+  // Poll faster while a cycle is actively running so "Last cycle" updates
+  // through its states instead of looking stuck for up to 30s at a time.
+  useEffect(() => {
+    const id = setInterval(refresh, isRunning ? RUNNING_POLL_MS : IDLE_POLL_MS);
+    return () => clearInterval(id);
+  }, [refresh, isRunning]);
 
   async function runCycle() {
     setRunning(true);
@@ -75,8 +109,20 @@ export function StatusBar() {
         <span className="text-muted-foreground">Last cycle:</span>
         {health?.lastCycle ? (
           <>
-            <Badge variant={cycleStateVariant(health.lastCycle.state)}>{health.lastCycle.state}</Badge>
-            <span className="text-muted-foreground">{relativeFromNow(health.lastCycle.finishedAt ?? health.lastCycle.scheduledFor)}</span>
+            {isRunning && (
+              <span className="relative flex h-2 w-2" title="cycle in progress">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-500" />
+              </span>
+            )}
+            <Badge variant={cycleStateVariant(health.lastCycle.state)}>
+              {STATE_LABELS[health.lastCycle.state] ?? health.lastCycle.state}
+            </Badge>
+            <span className="text-muted-foreground">
+              {isRunning
+                ? formatElapsed(health.lastCycle.startedAt ?? health.lastCycle.scheduledFor)
+                : relativeFromNow(health.lastCycle.finishedAt ?? health.lastCycle.scheduledFor)}
+            </span>
             {health.lastCycle.budgetHit && <Badge variant="warning">budget reached</Badge>}
           </>
         ) : (

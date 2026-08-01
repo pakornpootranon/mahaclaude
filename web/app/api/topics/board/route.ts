@@ -53,6 +53,31 @@ export async function GET() {
     mappingsByTopic.set(m.topicId, list);
   }
 
+  // Latest recommendation per (topic, ticker), newest first, used below to
+  // derive a BUY/SELL/No Action signal per stock the topic's mappings cover.
+  const recommendationRows = await prisma.recommendation.findMany({
+    where: { topicId: { in: topicIds } },
+    orderBy: { createdAt: "desc" },
+    select: { topicId: true, tickers: true, action: true, confidence: true, createdAt: true },
+  });
+  const recsByTopic = new Map<string, typeof recommendationRows>();
+  for (const r of recommendationRows) {
+    if (!r.topicId) continue;
+    const list = recsByTopic.get(r.topicId) ?? [];
+    list.push(r);
+    recsByTopic.set(r.topicId, list);
+  }
+
+  function tickerSignal(topicId: string, ticker: string): { signal: "BUY" | "SELL" | "No Action"; confidence: number | null; asOf: Date | null } {
+    const recs = recsByTopic.get(topicId) ?? [];
+    const hit = recs.find((r) => r.tickers.includes(ticker));
+    if (!hit) return { signal: "No Action", confidence: null, asOf: null };
+    if (hit.action === "BUY") return { signal: "BUY", confidence: Number(hit.confidence), asOf: hit.createdAt };
+    if (hit.action === "SELL") return { signal: "SELL", confidence: Number(hit.confidence), asOf: hit.createdAt };
+    // WATCH is advisory-only, not a BUY/SELL call — surfaces as No Action here.
+    return { signal: "No Action", confidence: Number(hit.confidence), asOf: hit.createdAt };
+  }
+
   const headlineRows = await prisma.$queryRaw<
     { topic_id: string; title: string; news_item_id: string; matched_at: Date }[]
   >`
@@ -78,6 +103,22 @@ export async function GET() {
     const topicMappings = mappingsByTopic.get(topic.id) ?? [];
     const impactedTickers = Array.from(new Set(topicMappings.flatMap((m) => m.tickers))).sort();
 
+    // One row per (market, ticker) covered by an enabled mapping, with the
+    // latest BUY/SELL/No Action signal for that ticker under this topic.
+    const seen = new Set<string>();
+    const stockSignals: { market: string; ticker: string; signal: string; confidence: number | null; asOf: string | null }[] = [];
+    for (const m of topicMappings) {
+      if (!m.enabled) continue;
+      for (const ticker of m.tickers) {
+        const key = `${m.market}:${ticker}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const { signal, confidence, asOf } = tickerSignal(topic.id, ticker);
+        stockSignals.push({ market: m.market, ticker, signal, confidence, asOf: asOf ? asOf.toISOString() : null });
+      }
+    }
+    stockSignals.sort((a, b) => a.ticker.localeCompare(b.ticker));
+
     return {
       id: topic.id,
       name: topic.name,
@@ -90,6 +131,7 @@ export async function GET() {
       lastTriggeredAt: hitsById.get(topic.id)?.last_triggered_at ?? null,
       recentHeadlines: headlinesByTopic.get(topic.id) ?? [],
       impactedTickers,
+      stockSignals,
       mappings: topicMappings.map((m) => ({
         id: m.id,
         market: m.market,

@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { Badge } from "@/components/ui/badge";
 import { Nav } from "@/components/nav";
 import { StatusBar } from "@/components/status-bar";
 import { ThemeProvider, THEME_INIT_SCRIPT } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { APP_VERSION } from "@/lib/version";
 
 export const metadata: Metadata = {
   title: "Mahachai Market Watch",
@@ -32,6 +34,9 @@ export default function RootLayout({
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/logo.png" alt="" className="h-8 w-8 rounded-full" />
                   Mahachai Market Watch
+                  <Badge variant="outline" className="align-middle text-[10px] font-normal">
+                    v{APP_VERSION}
+                  </Badge>
                 </span>
                 <Nav />
                 <ThemeToggle />

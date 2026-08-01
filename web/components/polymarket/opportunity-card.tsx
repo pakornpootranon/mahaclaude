@@ -57,14 +57,6 @@ export function PmOpportunityCard({ opp }: { opp: PmOpportunityListItem }) {
           <Link href={`/polymarket/${opp.id}`} className="text-xs font-medium text-primary hover:underline">
             View detail & provenance →
           </Link>
-          <a
-            href={opp.market.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            View live market ↗
-          </a>
         </div>
       </CardContent>
     </Card>

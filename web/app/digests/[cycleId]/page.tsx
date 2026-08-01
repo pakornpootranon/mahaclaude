@@ -22,11 +22,19 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
       digest: true,
       recommendations: {
         orderBy: { confidence: "desc" },
-        include: { topic: { select: { name: true } } },
+        include: { topic: { select: { name: true } }, analysis: { select: { magnitude: true, result: true } } },
       },
       pmOpportunities: {
         orderBy: { edgePoints: "desc" },
         include: { market: true },
+      },
+      analyses: {
+        orderBy: { magnitude: "desc" },
+        include: {
+          primaryItem: { select: { title: true } },
+          analysisTopics: { include: { topic: { select: { name: true } } } },
+          recommendations: { select: { id: true } },
+        },
       },
     },
   });
@@ -157,7 +165,10 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
         </CardHeader>
         <CardContent className="overflow-x-auto">
           {cycle.recommendations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing triggered this cycle.</p>
+            <p className="text-sm text-muted-foreground">
+              Nothing triggered this cycle — see analyzed storylines below for what was reviewed and why it didn&apos;t
+              clear the trigger thresholds.
+            </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -168,23 +179,78 @@ export default async function DigestDetailPage({ params }: { params: { cycleId: 
                   <th className="py-1 pr-2">Tickers</th>
                   <th className="py-1 pr-2">Topic</th>
                   <th className="py-1 pr-2">Confidence</th>
+                  <th className="py-1 pr-2">Magnitude</th>
+                  <th className="py-1 pr-2">Horizon</th>
                 </tr>
               </thead>
               <tbody>
-                {cycle.recommendations.map((r) => (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="py-1.5 pr-2">
-                      <Link href={`/recommendations/${r.id}`} className="hover:underline">
-                        <ActionBadge action={r.action} />
-                      </Link>
-                    </td>
-                    <td className="py-1.5 pr-2">{r.market}</td>
-                    <td className="py-1.5 pr-2">{r.sector}</td>
-                    <td className="py-1.5 pr-2">{r.tickers.join(", ") || "—"}</td>
-                    <td className="py-1.5 pr-2">{r.topic?.name ?? "unconfigured"}</td>
-                    <td className="py-1.5 pr-2">{Number(r.confidence).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {cycle.recommendations.map((r) => {
+                  const result = r.analysis.result as { horizon?: string } | null;
+                  return (
+                    <tr key={r.id} className="border-b last:border-0">
+                      <td className="py-1.5 pr-2">
+                        <Link href={`/recommendations/${r.id}`} className="hover:underline">
+                          <ActionBadge action={r.action} />
+                        </Link>
+                      </td>
+                      <td className="py-1.5 pr-2">{r.market}</td>
+                      <td className="py-1.5 pr-2">{r.sector}</td>
+                      <td className="py-1.5 pr-2">{r.tickers.join(", ") || "—"}</td>
+                      <td className="py-1.5 pr-2">{r.topic?.name ?? "unconfigured"}</td>
+                      <td className="py-1.5 pr-2">{Number(r.confidence).toFixed(2)}</td>
+                      <td className="py-1.5 pr-2">{Number(r.analysis.magnitude).toFixed(2)}</td>
+                      <td className="py-1.5 pr-2">{result?.horizon ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Analyzed storylines ({cycle.analyses.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="overflow-x-auto">
+          {cycle.analyses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No storylines reached analysis this cycle.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-xs text-muted-foreground">
+                  <th className="py-1 pr-2">Headline</th>
+                  <th className="py-1 pr-2">Topics matched</th>
+                  <th className="py-1 pr-2">Magnitude</th>
+                  <th className="py-1 pr-2">Confidence</th>
+                  <th className="py-1 pr-2">Horizon</th>
+                  <th className="py-1 pr-2">Triggered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cycle.analyses.map((a) => {
+                  const result = a.result as { horizon?: string } | null;
+                  const matchedTopics = a.analysisTopics.map((at) => at.topic?.name ?? "unconfigured").join(", ");
+                  return (
+                    <tr key={a.id} className="border-b last:border-0">
+                      <td className="max-w-xs truncate py-1.5 pr-2" title={a.primaryItem.title}>
+                        {a.primaryItem.title}
+                      </td>
+                      <td className="py-1.5 pr-2 text-xs text-muted-foreground">{matchedTopics || "—"}</td>
+                      <td className="py-1.5 pr-2">{Number(a.magnitude).toFixed(2)}</td>
+                      <td className="py-1.5 pr-2">{Number(a.confidence).toFixed(2)}</td>
+                      <td className="py-1.5 pr-2">{result?.horizon ?? "—"}</td>
+                      <td className="py-1.5 pr-2">
+                        {a.recommendations.length > 0 ? (
+                          <Badge variant="success">yes ({a.recommendations.length})</Badge>
+                        ) : (
+                          <Badge variant="outline">no</Badge>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
