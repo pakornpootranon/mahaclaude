@@ -107,13 +107,18 @@ needs no key for read-only market data (builder: verify endpoints at implementat
 
 ## 4. `sources.config` per `source_type` (FR-C1)
 
-| source_type | config JSON | secret env var |
+| source_type | config JSON | credential |
 |---|---|---|
 | `rss` | `{ "url": "https://..." }` | — |
-| `finnhub` | `{ "category": "general" }` (or `{"symbol": "AAPL"}` for company news) | `FINNHUB_KEY` |
-| `newsapi` | `{ "query": "OPEC OR \"oil supply\"", "domains": ["reuters.com"], "language": "en" }` | `NEWSAPI_KEY` |
+| `finnhub` | `{ "category": "general" }` (or `{"symbol": "AAPL"}` for company news) | `secrets.finnhub_api_key` (Settings → Sources), fallback `FINNHUB_KEY` env |
+| `newsapi` | `{ "query": "OPEC OR \"oil supply\"", "domains": ["reuters.com"], "language": "en" }` | `secrets.newsapi_api_key` (Settings → Sources), fallback `NEWSAPI_KEY` env |
 | `reddit_rss` | `{ "subreddit": "stocks", "listing": "hot", "limit": 25 }` (via subreddit .rss URL, no key) | — |
-| `mcp` | see below | per-connector, named in `auth_env_var` |
+| `mcp` | see below | `secrets["mcp_connector_token:{source_id}"]` (Settings → MCP Connectors), fallback `config.auth_env_var` env |
+
+Credential resolution (revised 2026-08-02, docs/02 §9): DB row wins, `.env` is the fallback for
+anyone who prefers it — same order as the Claude API key. `worker/secrets.py`'s
+`resolve_source_secret` does the DB-first-then-env lookup; `ingest.py` and `source_tests.py`
+both call it before invoking an adapter's `fetch`/`test`.
 
 `mcp` connector config (arch §4b):
 
@@ -135,9 +140,11 @@ needs no key for read-only market data (builder: verify endpoints at implementat
 
 `{topic_keywords}` in `args_template` expands per enabled watch topic (one call per topic, capped
 by `max_calls_per_cycle`, highest-sensitivity topics first). `hints` maps provider entity/sector
-tags into `news_items.analysis_hints`. Builder: verify the actual Bigdata.com MCP endpoint, tool
-name, and result shape at implementation time; the seed row ships **disabled** until the user sets
-the env var and flips the toggle (PRD acceptance #8 tests the toggle both ways).
+tags into `news_items.analysis_hints`. `auth_env_var` is now only the *fallback* credential path
+(§4 above) — entering the token directly in Settings → MCP Connectors is the primary path and
+takes priority. Builder: verify the actual Bigdata.com MCP endpoint, tool name, and result shape
+at implementation time; the seed row ships **disabled** until the user sets a token (UI or env)
+and flips the toggle (PRD acceptance #8 tests the toggle both ways).
 
 ## 5. Config export/import format (FR-C7)
 
@@ -242,10 +249,14 @@ Rules, schedule, LLM, and Polymarket exactly as the defaults in §1–§3b above
 
 - Each settings page: form ↔ table hybrid, optimistic save, inline validation mirroring the
   constraints tables above, "revert to defaults" per page.
-- Sources page: health badge, last-success time, Test button (async via `source_tests`).
+- Sources page: health badge, last-success time, Test button (async via `source_tests`); a
+  "Provider API keys" card for the shared Finnhub/NewsAPI DB-backed keys (masked, rotate-only,
+  revised 2026-08-02 — docs/02 §9).
 - MCP connectors page (FR-C8): filtered view of `source_type='mcp'` sources with connector fields
   (server URL, tool, args template, result mapping as a guided form with raw-JSON escape hatch),
-  prominent enable/disable toggle, env-var set/unset indicator, Test button.
+  prominent enable/disable toggle, masked per-connector auth token field (rotate-only, DB-backed,
+  primary path) plus the `auth_env_var` fallback name and its env-set/unset indicator
+  (secondary path, only shown when no DB token is set), Test button.
 - Topics page: topic list → drawer with keywords chips, sensitivity slider, mappings grid editor
   (add row: market select, sector text, tickers tag-input uppercased, polarity toggle, per-row
   enabled switch). Note: quick-add + inline scoping ALSO live on the dashboard topic board

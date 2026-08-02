@@ -2,7 +2,9 @@
 Asia/Bangkok built from settings['schedule'], re-read on a settings-changed
 check every minute so schedule edits need no restart (FR-C5). Manual runs
 (web sets cycles.requested_manual=true) are picked up by polling every 15s,
-same as `source_tests` requests (arch §6).
+same as `source_tests` requests (arch §6). `run_forever()` also fires one
+cycle (kind='startup') immediately when the process starts, instead of
+waiting for the first cron time or a manual click.
 
 Single entrypoint: `newswatch serve` (main.py). Replaces the Phase 1
 placeholder entrypoint (`run-cycle` once and exit) now that there's a
@@ -157,6 +159,16 @@ def run_forever() -> None:
 
     scheduler.start()
     logger.info("scheduler started")
+
+    # Kick off one cycle immediately on process startup rather than waiting
+    # for the next cron-scheduled time (which could be hours away) - a
+    # freshly (re)started worker should start producing data right away.
+    # Runs in a background thread so it doesn't delay entering the poll
+    # loop below; shares `_cycle_lock` with the cron/manual triggers above,
+    # so it can't race with either of them for who creates/resumes a cycle.
+    threading.Thread(target=_run_cycle_safely, kwargs={"kind": "startup"}, daemon=True).start()
+    logger.info("startup cycle dispatched in background")
+
     try:
         while True:
             time.sleep(1)

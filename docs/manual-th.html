@@ -238,7 +238,7 @@
 <div class="topbar">
   <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="var(--brand-ink)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16 L10 10 L14 14 L20 6"/></svg></span>
   <span class="name">Mahachai Market Watch</span>
-  <span class="ver">v0.2</span>
+  <span class="ver">v0.3</span>
   <span class="spacer"></span>
   <a class="ghlink" href="https://github.com/pakornpootranon/mahaclaude" target="_blank" rel="noreferrer">github.com/pakornpootranon/mahaclaude</a>
 </div>
@@ -462,7 +462,8 @@
       <p class="intro">ทุกอย่างที่ระบบเฝ้าดูปรับได้ในหน้านี้ ไม่ต้องแก้โค้ด และมีผลตั้งแต่รอบถัดไปโดยไม่ต้องรีสตาร์ท</p>
       <div class="legend">
         <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">01</span>
-          <div><h5>Sources</h5><p>เพิ่ม/ปิดแหล่งข่าว RSS, Finnhub, NewsAPI, Reddit, และ MCP connector เช่น Bigdata.com</p></div></div>
+          <div><h5>Sources</h5><p>เพิ่ม/ปิดแหล่งข่าว RSS, Finnhub, NewsAPI, Reddit, และ MCP connector เช่น Bigdata.com —
+          รวมถึงการ์ด “Provider API keys” และช่อง “Auth token” ต่อ connector (ใหม่ใน v0.3)</p></div></div>
         <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">02</span>
           <div><h5>Topics &amp; Mappings</h5><p>หัวข้อเฝ้าดู, คีย์เวิร์ด, ความไว (sensitivity), และตารางแมปหมวด/หุ้นต่อหัวข้อ</p></div></div>
         <div class="item"><span class="dot" style="background:var(--panel-tint); color:var(--brand);">03</span>
@@ -501,6 +502,43 @@
       <p style="font-size:.85rem; color:var(--ink-soft); max-width:68ch;">ทางเลือกอื่น: ใส่ <code>ANTHROPIC_API_KEY=sk-ant-…</code>
       ไว้ในไฟล์ <code>.env</code> ตอนติดตั้งก็ได้ — แต่ถ้าตั้งค่าไว้ทั้งสองที่ คีย์ที่กรอกใน Settings จะชนะเสมอ</p>
 
+      <h3 style="margin-top:2.25rem; font-size:1.05rem;">ใหม่ใน v0.3 — เพิ่ม API key ของแหล่งข่าว/MCP connector ในหน้าเว็บได้แล้ว</h3>
+      <p style="max-width:68ch;">ก่อนหน้านี้คีย์ของ Finnhub, NewsAPI.org และ MCP connector (เช่น Bigdata.com) ต้องแก้ไฟล์
+      <code>.env</code> เท่านั้น — ตั้งแต่ v0.3 ใส่ได้ตรงในหน้าเว็บเลย เก็บแบบ mask เหมือนกับ Claude API key ทุกประการ
+      (ไม่เคยแสดงคีย์เต็ม ไม่ถูกส่งออกไปกับไฟล์ export การตั้งค่า)</p>
+      <div class="grid-2">
+        <div class="figure">
+          <div class="panel" style="font-size:.85rem;">
+            <div style="font-weight:600; margin-bottom:.5rem;">Provider API keys <span style="font-weight:400; color:var(--ink-soft);">(หน้า Sources)</span></div>
+            <p style="font-size:.78rem; color:var(--ink-soft); margin-bottom:.3rem;">Finnhub (set, ending …4a1c)</p>
+            <div style="display:flex; gap:.5rem; align-items:center; margin-bottom:.7rem;">
+              <span class="panel" style="padding:.35rem .6rem; flex:1; color:var(--ink-soft); background:var(--panel-tint);">••••••••••••••</span>
+            </div>
+            <p style="font-size:.78rem; color:var(--ink-soft); margin-bottom:.3rem;">NewsAPI.org (not set)</p>
+            <div style="display:flex; gap:.5rem; align-items:center;">
+              <span class="panel" style="padding:.35rem .6rem; flex:1; color:var(--ink-soft); background:var(--panel-tint);">NewsAPI.org API key</span>
+              <span class="badge outline" style="cursor:default;">Save</span>
+            </div>
+          </div>
+          <figcaption>หน้า <strong>Settings → Sources</strong> — การ์ด “Provider API keys” ด้านบนสุด ใช้ร่วมกันทุก source ของผู้ให้บริการนั้น</figcaption>
+        </div>
+        <div class="figure">
+          <div class="panel" style="font-size:.85rem;">
+            <div style="font-weight:600; margin-bottom:.5rem;">Bigdata.com (MCP) <span class="badge buy" style="margin-left:.4rem;">token: set …9999</span></div>
+            <p style="font-size:.78rem; color:var(--ink-soft); margin-bottom:.3rem;">Auth token (set, ending …9999)</p>
+            <div style="display:flex; gap:.5rem; align-items:center;">
+              <span class="panel" style="padding:.35rem .6rem; flex:1; color:var(--ink-soft); background:var(--panel-tint);">••••••••••••••</span>
+              <span class="badge outline" style="cursor:default;">Save</span>
+            </div>
+          </div>
+          <figcaption>หน้า <strong>Settings → MCP Connectors</strong> — แต่ละ connector มีช่อง “Auth token” ของตัวเอง
+          เพราะแต่ละตัวอาจต่อกับเซิร์ฟเวอร์คนละที่ (ต่างจาก Finnhub/NewsAPI ที่ใช้คีย์เดียวร่วมกัน)</figcaption>
+        </div>
+      </div>
+      <p style="font-size:.85rem; color:var(--ink-soft); max-width:68ch; margin-top:.5rem;">ถ้าไม่กรอกในหน้าเว็บ ระบบยัง fallback
+      ไปอ่านจาก <code>.env</code> (<code>FINNHUB_KEY</code>, <code>NEWSAPI_KEY</code>, หรือชื่อตัวแปรที่ตั้งไว้ใน
+      “Auth env var name” ของแต่ละ connector) ให้เหมือนเดิมทุกประการ — เลือกใช้ทางไหนก็ได้</p>
+
       <h3 style="margin-top:2.25rem; font-size:1.05rem;">4 ขั้นตอนของ AI ต่างกันอย่างไร</h3>
       <p style="max-width:68ch;">ในการ์ด “Per-tier model &amp; reasoning” แต่ละแถวคือ 1 ขั้นตอนในไปป์ไลน์
       เลือกโมเดลและระดับ reasoning ได้อิสระต่อขั้นตอน เพราะแต่ละงานต้องการความละเอียด (และมีต้นทุน) ไม่เท่ากัน —
@@ -527,9 +565,10 @@
             <tr>
               <td style="font-weight:600;">digest</td>
               <td style="font-family:var(--font-th); white-space:normal;">สังเคราะห์ภาพรวมทั้งรอบเป็นภาษาไทย 1 ครั้งท้ายรอบ
-              รวมถึงสรุปของทุกหัวข้อที่เฝ้าดู แม้หัวข้อนั้นไม่มีข่าวเข้าเกณฑ์เลย</td>
+              รวมถึงสรุปของทุกหัวข้อที่เฝ้าดู แม้หัวข้อนั้นไม่มีข่าวเข้าเกณฑ์เลย ต้องชั่งน้ำหนักว่าเรื่องไหนสำคัญที่สุดของรอบ
+              จึงยกระดับ reasoning ขึ้นมาเท่ากับ analysis ตั้งแต่ v0.3 (เดิมคือ off)</td>
               <td style="font-family:var(--font-th); white-space:normal;">หน้า Digest ทั้งหน้า</td>
-              <td>off</td>
+              <td>low</td>
             </tr>
             <tr>
               <td style="font-weight:600;">pm_estimate</td>
@@ -571,6 +610,8 @@
       <p style="font-size:.85rem;"><strong>ข้อควรรู้:</strong> หน้าเว็บ (<code>make dev-web</code>) แค่ "ขอ" ให้รันรอบเท่านั้น
       งานจริงทำโดยโปรเซส worker แยกต่างหาก (<code>make dev-worker</code> รันครั้งเดียว หรือ <code>make serve</code>
       รันตามตารางเวลาต่อเนื่อง) ถ้าไม่มี worker ทำงานอยู่ รอบจะค้างที่ PENDING ตลอดไป</p>
+      <p style="font-size:.85rem;"><strong>ใหม่ใน v0.3:</strong> ตอนสั่ง <code>make serve</code> (หรือรีสตาร์ท worker)
+      ระบบจะรันรอบแรกทันที ไม่ต้องรอถึงเวลาตามตารางที่ตั้งไว้ — เห็นผลลัพธ์ได้เร็วขึ้นทุกครั้งที่เปิด worker ใหม่</p>
     </section>
 
     <section id="signals">
@@ -623,7 +664,7 @@
     </section>
 
     <footer>
-      <span>Mahachai Market Watch v0.2 — คู่มือนี้จัดทำโดย Claude Code</span>
+      <span>Mahachai Market Watch v0.3 — คู่มือนี้จัดทำโดย Claude Code</span>
       <a href="https://github.com/pakornpootranon/mahaclaude" target="_blank" rel="noreferrer">github.com/pakornpootranon/mahaclaude</a>
       <span>ไม่ใช่คำแนะนำการลงทุน · เพื่อการวิจัยส่วนบุคคลเท่านั้น</span>
     </footer>

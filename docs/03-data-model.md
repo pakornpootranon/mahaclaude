@@ -235,18 +235,27 @@ CREATE TABLE llm_calls (
 CREATE INDEX ON llm_calls (created_at);
 ```
 
-### 2.12 `secrets` — UI-managed secrets (arch §9; currently only the Claude API key)
+### 2.12 `secrets` — UI-managed secrets (arch §9)
 
 ```sql
 CREATE TABLE secrets (
-  key           text PRIMARY KEY,              -- 'anthropic_api_key'
+  key           text PRIMARY KEY,              -- 'anthropic_api_key' | 'finnhub_api_key' |
+                                                --   'newsapi_api_key' | 'mcp_connector_token:{source_id}'
   value         text NOT NULL,                 -- stored as-is (localhost single-user, approved)
   last4         text NOT NULL,                 -- for masked display without decrypt round-trip
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
 ```
 
-Never joined into any export/read API; `/api/config/llm` GET returns only `{set: true, last4}`.
+`key` has no enum/check constraint — any string is a valid row, which is what let the
+Finnhub/NewsAPI/MCP-connector keys move into this table (2026-08-02) without a migration; only
+the resolution order in `worker/secrets.py` and the routes in `web/lib/secrets.ts` changed.
+MCP connector tokens are keyed per source id (`mcp_connector_token:{source_id}`) rather than a
+single shared key, since each connector row can point at a different server.
+
+Never joined into any export/read API; each settings GET returns only `{set: true, last4}` for
+whichever key(s) it owns (`/api/config/llm`, `/api/config/connector-keys`,
+`/api/config/mcp-connectors`).
 
 ### 2.13 `pm_markets` — Polymarket market snapshots
 

@@ -256,6 +256,15 @@ def run_digest(conn: Connection, *, cycle_id: str, budget_hit: bool) -> dict:
         result = _degraded_digest(conn, cycle_id=cycle_id)
     else:
         llm_settings = client.get_llm_settings(conn)
+        # Digest reads as "just summarization" but it isn't purely
+        # mechanical: it has to weigh which storylines/themes matter most
+        # across the whole cycle, decide what's worth surfacing as a
+        # near-miss (below the confidence/magnitude floor) versus noise,
+        # and produce one honest topic_summaries entry for every configured
+        # topic including ones with zero matches. That synthesis-and-
+        # judgment step benefits from reasoning at least as much as a
+        # single-storyline analysis call does - it's one call per cycle,
+        # so the cost multiplier is low even at a higher level.
         model, reasoning = llm_settings.tier("digest")
 
         cycle_stats = conn.execute(select(cycles_t.c.stats).where(cycles_t.c.id == cycle_id)).scalar_one()

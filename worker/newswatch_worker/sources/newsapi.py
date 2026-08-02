@@ -28,13 +28,13 @@ def _api_key() -> str:
     return key
 
 
-def _build_url(source: SourceConfig, since: datetime) -> str:
+def _build_url(source: SourceConfig, since: datetime, key: str) -> str:
     params: dict[str, str] = {
         "q": source.config["query"],
         "language": source.config.get("language", "en"),
         "sortBy": "publishedAt",
         "from": since.date().isoformat(),
-        "apiKey": _api_key(),
+        "apiKey": key,
     }
     domains = source.config.get("domains")
     if domains:
@@ -72,8 +72,14 @@ class NewsApiAdapter:
         since: datetime,
         *,
         topics: list[dict[str, Any]] | None = None,
+        secret: str | None = None,
     ) -> list[RawItem]:
-        url = _build_url(source, since)
+        # `secret` is the DB-first-then-env resolved key (ingest.py /
+        # source_tests.py, docs/02 §9 override); `_api_key()` (env-only) is
+        # the fallback for anyone calling the adapter directly without going
+        # through that resolution (e.g. these unit tests).
+        key = secret or _api_key()
+        url = _build_url(source, since, key)
         response = polite_get(url)
         payload = response.json()
         if payload.get("status") != "ok":
@@ -81,10 +87,10 @@ class NewsApiAdapter:
         items = [_article_to_raw_item(a) for a in payload.get("articles", [])]
         return [i for i in items if i.url and (i.published_at is None or i.published_at >= since)]
 
-    def test(self, source: SourceConfig) -> TestResult:
+    def test(self, source: SourceConfig, *, secret: str | None = None) -> TestResult:
         try:
             since = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-            items = self.fetch(source, since=since)
+            items = self.fetch(source, since=since, secret=secret)
             return TestResult(
                 ok=True, item_count=len(items), sample_titles=[i.title for i in items[:3]]
             )

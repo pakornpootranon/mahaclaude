@@ -30,10 +30,11 @@ class RedditRssAdapter:
         since: datetime,
         *,
         topics: list[dict[str, Any]] | None = None,
+        secret: str | None = None,
     ) -> list[RawItem]:
         return fetch_feed(_feed_url(source), since)
 
-    def test(self, source: SourceConfig) -> TestResult:
+    def test(self, source: SourceConfig, *, secret: str | None = None) -> TestResult:
         try:
             items = self.fetch(source, since=datetime.min.replace(tzinfo=timezone.utc))
             return TestResult(

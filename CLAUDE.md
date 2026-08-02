@@ -32,7 +32,11 @@ propose the fix in the PR/commit message rather than silently diverging.
 - `web/`: Next.js 14+ App Router, TypeScript, Tailwind, shadcn/ui, Prisma → Postgres.
 - `worker/`: Python 3.12, uv, APScheduler, httpx, anthropic SDK, `mcp` SDK (client), SQLAlchemy (reflect Prisma's tables), yfinance, feedparser.
 - Postgres 16 running natively on the host (no containers); web binds 127.0.0.1:3000.
-- Secrets in `.env` (`ANTHROPIC_API_KEY` fallback, `FINNHUB_KEY`, `NEWSAPI_KEY`, `BIGDATA_API_KEY`, `DATABASE_URL`) — with ONE exception: the Claude API key is also settable via the UI into the `secrets` table (docs/02 §9); DB value wins, masked display only, excluded from export/logs.
+- `DATABASE_URL` stays `.env`-only (needed before the DB exists to even hold a `secrets` row).
+  Every other credential (`ANTHROPIC_API_KEY`, `FINNHUB_KEY`, `NEWSAPI_KEY`, MCP connector tokens
+  like `BIGDATA_API_KEY`) is settable via a Settings UI into the `secrets` table (docs/02 §9,
+  revised 2026-08-02 — originally the Claude key was the sole DB-backed exception); DB value
+  wins over the matching `.env` var, masked display only, excluded from export/logs.
 - Look up **current** Claude model IDs, prices, and extended-thinking support when implementing `settings['llm']` defaults; verify the Polymarket Gamma API endpoints and the Bigdata.com MCP tool shape at implementation time.
 
 ## Commands (implement via Makefile early in Phase 1)

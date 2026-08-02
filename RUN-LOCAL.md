@@ -126,9 +126,12 @@ Then edit `.env`. Only one key matters to get running:
 |---|---|---|
 | `DATABASE_URL` | Already correct | `postgresql://newswatch:newswatch@localhost:5432/newswatch` |
 | `ANTHROPIC_API_KEY` | For cycles only | Get one at [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys). You can also set it later in the UI under Settings → LLM, which takes priority over `.env`. |
-| `FINNHUB_KEY` | Optional | Free tier, [finnhub.io/register](https://finnhub.io/register). Without it that source shows `failing` in the health strip — harmless. |
-| `NEWSAPI_KEY` | Optional | Free tier, [newsapi.org/register](https://newsapi.org/register). |
-| `BIGDATA_API_KEY` | Optional | Only if you enable the Bigdata.com MCP connector, which ships disabled. |
+| `FINNHUB_KEY` | Optional | Free tier, [finnhub.io/register](https://finnhub.io/register). Without it that source shows `failing` in the health strip — harmless. Can also be set later in Settings → Sources ("Provider API keys"), which takes priority over `.env`. |
+| `NEWSAPI_KEY` | Optional | Free tier, [newsapi.org/register](https://newsapi.org/register). Can also be set later in Settings → Sources ("Provider API keys"), which takes priority over `.env`. |
+| `BIGDATA_API_KEY` | Optional | Only if you enable the Bigdata.com MCP connector, which ships disabled. Can also be set later per-connector in Settings → MCP Connectors ("Auth token"), which takes priority over `.env`. |
+
+Every key above can be entered later through the Settings UI instead of (or in addition to)
+`.env` — the DB value always wins if both are set, so `.env` just becomes the fallback.
 
 **The dashboard runs fine with no API keys at all.** You just cannot run a
 cycle, so the Action feed stays empty.

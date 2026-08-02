@@ -114,7 +114,11 @@ Idempotency rules:
 
 Scheduling: APScheduler cron jobs in `Asia/Bangkok`, times read from `settings` at startup **and**
 re-read on a settings-changed flag each minute (FR-C5, no restart). Manual runs: `web` sets
-`cycles.requested_manual = true` row; worker polls for it every 15 s (no queue needed).
+`cycles.requested_manual = true` row; worker polls for it every 15 s (no queue needed). In
+addition, `newswatch serve` (`scheduler.run_forever`) fires one cycle (`kind='startup'`)
+immediately on process start, in the background, rather than waiting for the first cron time —
+so a freshly (re)started worker starts producing data right away instead of sitting idle for up
+to a full schedule interval.
 
 ## 4. Source adapter contract
 
@@ -207,16 +211,32 @@ so the PM outcomes tab can score calibration (estimate vs actual). Data in `pm_o
 
 ## 9. Configuration & secrets
 
-- **Claude API key is the one deliberate exception to env-only secrets** (approved decision,
-  FR-C6): stored in the `secrets` table (03 §2.12), entered/rotated via Settings → LLM, always
-  rendered masked (`sk-ant-…••••` last 4 chars), excluded from config export and logs. Key
-  resolution order in `llm/client.py`: DB row → `ANTHROPIC_API_KEY` env fallback. Re-read on
-  every call, so rotation needs no restart (PRD acceptance #7).
-- All other secrets (Finnhub, NewsAPI, MCP connector tokens like `BIGDATA_API_KEY`) remain in
-  `.env` only — never in the DB, never rendered back to the UI (Settings shows `set/unset`
-  status). All behavioral config lives in Postgres (FR-C).
+- **Every API credential now follows the same DB-backed pattern** (revised 2026-08-02;
+  originally only the Claude API key had this, with connector keys env-only — see below for why
+  that changed): stored in the `secrets` table (03 §2.12), entered/rotated via a Settings UI,
+  always rendered masked (last 4 chars only), excluded from config export and logs. `.env` is
+  the fallback when no DB row is set, never the other way around. Re-read on every call, so
+  rotation needs no restart (PRD acceptance #7).
+  - **Claude API key**: `secrets.anthropic_api_key`, Settings → LLM. Resolution in
+    `llm/client.py`: DB row → `ANTHROPIC_API_KEY` env fallback.
+  - **Finnhub / NewsAPI**: `secrets.finnhub_api_key` / `secrets.newsapi_api_key`, Settings →
+    Sources ("Provider API keys" card, one shared key per provider). Resolution in
+    `worker/secrets.py`'s `resolve_source_secret`: DB row → `FINNHUB_KEY` / `NEWSAPI_KEY` env
+    fallback.
+  - **MCP connector tokens**: `secrets.mcp_connector_token:{source_id}` — scoped per connector
+    row, not a single shared key, since each MCP connector can point at a different server
+    (`web/lib/secrets.ts` / `worker/secrets.py`'s `mcpConnectorSecretKey`/`mcp_connector_secret_key`).
+    Settings → MCP Connectors. Resolution: DB row → `config.auth_env_var` env fallback.
+  - **Why this changed from the original "Claude key is the one deliberate exception" decision**:
+    user request (2026-08-02) — a UI entry point for connector keys was worth more than keeping
+    the smaller DB/secrets-table surface area. `docs/03 §2.12`'s `secrets` table already had no
+    schema constraint tying it to one key, so this was a resolution-order change in the worker
+    plus new (thin) API routes/UI in `web`, not a schema migration.
+- All behavioral config (source rows, topics, rules, schedule, LLM tiers) lives in Postgres
+  (FR-C), same as before.
 - Postgres keeps its own data directory on the host; `make backup` dumps DB +
-  config-export JSON to `./backups/`.
+  config-export JSON to `./backups/` (config export still excludes every `secrets` row, DB-backed
+  or not — docs/05 §8).
 
 ## 10. Security posture
 

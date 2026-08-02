@@ -21,6 +21,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import Connection
 
 from newswatch_worker.dedupe import dedupe_key
+from newswatch_worker.secrets import resolve_source_secret
 from newswatch_worker.sources import ADAPTERS, SourceConfig
 
 logger = logging.getLogger(__name__)
@@ -95,8 +96,10 @@ def ingest_source(
         language=source_row.language,
     )
 
+    secret = resolve_source_secret(conn, source_row)
+
     try:
-        raw_items = adapter.fetch(source_config, since, topics=topics)
+        raw_items = adapter.fetch(source_config, since, topics=topics, secret=secret)
     except Exception as exc:  # noqa: BLE001 - a source failure must not fail the cycle (FR-I5)
         logger.warning("source=%s fetch failed: %s", source_row.id, exc)
         _record_failure(conn, sources_table, source_row.id, source_row.consecutive_failures)

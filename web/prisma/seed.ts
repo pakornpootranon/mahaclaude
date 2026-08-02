@@ -293,9 +293,23 @@ async function main() {
       value: {
         available_models: [HAIKU_MODEL, SONNET_MODEL, OPUS_MODEL],
         tiers: {
+          // Reasoning generally scales with how much per-call judgment a
+          // tier requires, and inversely with how many times it's called
+          // per cycle (docs/04-llm-pipeline.md §1):
+          //   triage: cheap, mechanical, runs over every ingested item -> off.
           triage: { model: HAIKU_MODEL, reasoning: "off" },
+          //   analysis: per-storyline direction/magnitude/confidence
+          //   judgment from prose, a handful of calls per cycle -> low.
           analysis: { model: SONNET_MODEL, reasoning: "low" },
-          digest: { model: SONNET_MODEL, reasoning: "off" },
+          //   digest: one call per cycle synthesizing everything above,
+          //   deciding what's worth surfacing - low cost multiplier makes
+          //   the reasoning budget affordable, so it matches analysis
+          //   rather than sitting at "off".
+          digest: { model: SONNET_MODEL, reasoning: "low" },
+          //   pm_estimate: independent probability forecasting (not just
+          //   classification), but can run ~20+ times a cycle (scan_top_n
+          //   + news matches) - medium balances forecast quality against
+          //   that call volume; save "high" for the lower-volume tiers.
           pm_estimate: { model: SONNET_MODEL, reasoning: "medium" },
         },
         max_items_per_cycle: 150,

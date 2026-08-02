@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/config/export - FR-C7. Never includes the Claude API key (it
-// isn't in this JSON at all - it lives in the secrets table, arch §9) or
-// any auth_env_var *values* (sources.config only ever stores the env var
-// *name*, e.g. "BIGDATA_API_KEY", never a secret value - see docs/05 §4).
+// GET /api/config/export - FR-C7. Never includes any credential (Claude
+// API key, Finnhub/NewsAPI keys, MCP connector tokens) - none of them are
+// in this JSON at all, they all live in the secrets table (arch §9) which
+// this route never queries. sources.config only ever stores the env var
+// *name* as a fallback label (e.g. "BIGDATA_API_KEY"), never a secret value
+// - see docs/05 §4.
 export async function GET() {
   const [sources, topics, rules, schedule, llm, polymarket] = await Promise.all([
     prisma.source.findMany({ orderBy: { name: "asc" } }),

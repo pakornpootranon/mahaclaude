@@ -28,8 +28,7 @@ def _api_key() -> str:
     return key
 
 
-def _build_url(source: SourceConfig, since: datetime) -> str:
-    key = _api_key()
+def _build_url(source: SourceConfig, since: datetime, key: str) -> str:
     if "symbol" in source.config:
         date_from = since.date().isoformat()
         date_to = datetime.now(timezone.utc).date().isoformat()
@@ -64,8 +63,14 @@ class FinnhubAdapter:
         since: datetime,
         *,
         topics: list[dict[str, Any]] | None = None,
+        secret: str | None = None,
     ) -> list[RawItem]:
-        url = _build_url(source, since)
+        # `secret` is the DB-first-then-env resolved key (ingest.py /
+        # source_tests.py, docs/02 §9 override); `_api_key()` (env-only) is
+        # the fallback for anyone calling the adapter directly without going
+        # through that resolution (e.g. these unit tests).
+        key = secret or _api_key()
+        url = _build_url(source, since, key)
         response = polite_get(url)
         payload = response.json()
         if not isinstance(payload, list):
@@ -73,10 +78,10 @@ class FinnhubAdapter:
         items = [_item_to_raw_item(i) for i in payload]
         return [i for i in items if i.url and (i.published_at is None or i.published_at >= since)]
 
-    def test(self, source: SourceConfig) -> TestResult:
+    def test(self, source: SourceConfig, *, secret: str | None = None) -> TestResult:
         try:
             since = datetime.now(timezone.utc) - timedelta(days=7)
-            items = self.fetch(source, since=since)
+            items = self.fetch(source, since=since, secret=secret)
             return TestResult(
                 ok=True, item_count=len(items), sample_titles=[i.title for i in items[:3]]
             )

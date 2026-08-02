@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.engine import Connection
 
+from newswatch_worker.secrets import resolve_source_secret
 from newswatch_worker.sources import ADAPTERS, SourceConfig
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,8 @@ def _run_one(conn: Connection, *, source_tests_table, sources_table, test_row: A
         config=source_row.config,
         language=source_row.language,
     )
-    test_result = adapter.test(source_config)
+    secret = resolve_source_secret(conn, source_row)
+    test_result = adapter.test(source_config, secret=secret)
 
     conn.execute(
         source_tests_table.update()

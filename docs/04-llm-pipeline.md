@@ -14,11 +14,23 @@ changes never corrupt idempotency.
 |---|---|---|---|---|
 | 1 — Triage | Relevance filter + storyline clustering, batched | `claude-haiku-latest`-class (cheapest current Haiku) | off | per-item relevant/irrelevant + story_key |
 | 2 — Analysis | Deep impact analysis per storyline | `claude-sonnet-latest`-class (current Sonnet) | low | AnalysisResult JSON |
-| 3 — Digest | Cycle synthesis | same Sonnet-class model | off | mood + paragraph + themes |
+| 3 — Digest | Cycle synthesis | same Sonnet-class model | low | mood + paragraph + themes |
 | 4 — PM estimate | Polymarket probability estimation (§9) | same Sonnet-class model | medium | PmEstimate JSON |
 
 Model IDs are **settings values**, not hardcoded — Claude model names change over time; the
 Settings → LLM page holds the exact IDs. `worker/llm/client.py` reads them per call.
+
+**Why these levels differ per tier**: reasoning scales with how much per-call judgment a tier
+needs, and inversely with how many times it runs per cycle. Triage is a mechanical
+relevant/irrelevant classification run over every ingested item, so `off` is right — extended
+thinking would multiply cost across the highest call volume in the pipeline for little quality
+gain. Analysis and digest both make a genuine judgment call (impact direction/magnitude, or
+which storylines are worth surfacing) but run only a handful of times per cycle each, so the
+reasoning spend is affordable — hence both above `off`. PM estimate is genuine independent
+forecasting (arguably harder than analysis's structured impact scoring), but it can run once per
+*candidate market* — up to `scan_top_n` (default 20) plus every news-matched market — so it's
+capped at `medium` rather than `high` to avoid multiplying a high reasoning budget across that
+many calls in one cycle.
 
 **Reasoning level** (FR-C6): each tier has a user-configurable extended-thinking level mapped by
 `client.py` to a thinking-token budget: `off` = extended thinking disabled, `low` = 2,048,
@@ -35,7 +47,11 @@ mark key invalid in health strip; never log the key.
 Cost-control invariants (enforced in `client.py`, not in prompts):
 
 - Hard monthly budget cap (settings `llm.monthly_budget_usd`) — checked before every call (arch §8).
-- `llm.max_items_per_cycle` cap applied before triage (newest first); overflow items marked `triage_status='skipped_budget'`.
+- `llm.max_items_per_cycle` cap applied before triage, newest-first **within** a topic-hint
+  bucket but round-robined **across** topic-hint buckets first (`triage.py`'s
+  `_round_robin_by_topic_hint`, keyed off each topic's `keywords` as a cheap pre-triage hint —
+  not authoritative relevance) so one high-volume topic can't consume the whole per-cycle item
+  cap and starve every other topic's coverage; overflow items marked `triage_status='skipped_budget'`.
 - Max 4096 output tokens per call; temperature 0 for triage/analysis, 0.3 for digest.
 - Use structured outputs / tool-use JSON schema enforcement where the SDK supports it; otherwise parse with strict JSON extraction + one repair retry.
 
@@ -98,6 +114,12 @@ Post-processing (code): write `triage_status` + `story_key` to `news_items`; ite
 Per `story_key` with ≥1 relevant item: pick primary item (longest body_excerpt, else earliest),
 attach up to 4 additional titles/sources as corroboration. **One tier-2 call per storyline**, not
 per item — this is the main cost lever and prevents duplicate-storyline signal inflation (PRD risk table).
+
+Storylines are then round-robined by matched topic (`analyze.py`'s `_round_robin_by_topic`)
+before the ANALYZING loop runs them: one storyline per matched topic first, then a second pass,
+etc. Storylines matching no topic ("unconfigured but significant") get their own fair turn too.
+Without this, DB scan order could let one topic's storylines exhaust a budget/item cap mid-cycle
+before every watched topic got even one analysis.
 
 ## 5. Tier 2 — Analysis (`analyze-v1`)
 

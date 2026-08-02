@@ -36,6 +36,8 @@ interface ConnectorRow {
   enabled: boolean;
   health: string;
   authEnvVarSet: boolean | null;
+  authTokenSet: boolean;
+  authTokenLast4: string | null;
 }
 
 function ConnectorFormDialog({
@@ -52,6 +54,7 @@ function ConnectorFormDialog({
   const [serverUrl, setServerUrl] = useState(initial?.config.server_url ?? "");
   const [toolName, setToolName] = useState(initial?.config.tool_name ?? "");
   const [authEnvVar, setAuthEnvVar] = useState(initial?.config.auth_env_var ?? "");
+  const [authToken, setAuthToken] = useState("");
   const [maxCalls, setMaxCalls] = useState(String(initial?.config.max_calls_per_cycle ?? 10));
   const [argsTemplateText, setArgsTemplateText] = useState(
     JSON.stringify(initial?.config.args_template ?? { query: "{topic_keywords} latest news", limit: 10 }, null, 2)
@@ -101,7 +104,12 @@ function ConnectorFormDialog({
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, config, enabled, ...(initial ? {} : {}) }),
+        body: JSON.stringify({
+          name,
+          config,
+          enabled,
+          ...(authToken.trim() ? { authToken: authToken.trim() } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -138,8 +146,24 @@ function ConnectorFormDialog({
             <Input id="mcp-connector-tool-name" value={toolName} onChange={(e) => setToolName(e.target.value)} placeholder="e.g. bigdata_search" />
           </div>
           <div className="flex flex-col gap-1">
-            <Label htmlFor="mcp-connector-auth-env-var">Auth env var name</Label>
+            <Label htmlFor="mcp-connector-auth-token">
+              Auth token{initial?.authTokenSet ? ` (set, ending …${initial.authTokenLast4})` : ""}
+            </Label>
+            <Input
+              id="mcp-connector-auth-token"
+              type="password"
+              value={authToken}
+              onChange={(e) => setAuthToken(e.target.value)}
+              placeholder={initial?.authTokenSet ? "leave blank to keep the current token" : "paste this connector's API token"}
+            />
+            <span className="text-xs text-muted-foreground">
+              Stored in the database, masked always, excluded from config export/logs — same as the Claude API key.
+            </span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="mcp-connector-auth-env-var">Auth env var name (fallback, optional)</Label>
             <Input id="mcp-connector-auth-env-var" value={authEnvVar} onChange={(e) => setAuthEnvVar(e.target.value)} placeholder="e.g. BIGDATA_API_KEY" />
+            <span className="text-xs text-muted-foreground">Only used if no auth token is set above.</span>
           </div>
           <div className="flex flex-col gap-1">
             <Label htmlFor="mcp-connector-max-calls">Max calls per cycle</Label>
@@ -224,9 +248,12 @@ export default function McpConnectorsSettingsPage() {
                 <Badge variant={c.health === "ok" ? "success" : c.health === "failing" ? "destructive" : "secondary"}>
                   {c.health}
                 </Badge>
-                {c.config.auth_env_var && (
-                  <Badge variant={c.authEnvVarSet ? "success" : "warning"}>
-                    {c.config.auth_env_var}: {c.authEnvVarSet ? "set" : "unset"}
+                <Badge variant={c.authTokenSet ? "success" : "warning"}>
+                  token: {c.authTokenSet ? `set …${c.authTokenLast4}` : "unset"}
+                </Badge>
+                {c.config.auth_env_var && !c.authTokenSet && (
+                  <Badge variant={c.authEnvVarSet ? "success" : "secondary"}>
+                    {c.config.auth_env_var} (fallback): {c.authEnvVarSet ? "set" : "unset"}
                   </Badge>
                 )}
                 <div className="ml-auto flex items-center gap-2">

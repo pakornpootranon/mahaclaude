@@ -42,6 +42,102 @@ function healthVariant(health: string): "success" | "destructive" | "secondary" 
   return "secondary";
 }
 
+interface SecretStatus {
+  set: boolean;
+  last4: string | null;
+}
+
+// Provider-level keys (Finnhub, NewsAPI) - one shared key per provider,
+// unlike MCP connector tokens which are per-connector (docs/02 §9 override,
+// 2026-08-02: these used to be .env-only, now also settable here, stored
+// masked in the DB the same way the Claude API key already is).
+function ProviderKeysCard() {
+  const [finnhub, setFinnhub] = useState<SecretStatus | null>(null);
+  const [newsapi, setNewsapi] = useState<SecretStatus | null>(null);
+  const [finnhubInput, setFinnhubInput] = useState("");
+  const [newsapiInput, setNewsapiInput] = useState("");
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    const res = await fetch("/api/config/connector-keys", { cache: "no-store" });
+    const data = await res.json();
+    setFinnhub(data.finnhub);
+    setNewsapi(data.newsapi);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function save() {
+    setSaveMessage(null);
+    const body: Record<string, string> = {};
+    if (finnhubInput.trim()) body.finnhub = finnhubInput.trim();
+    if (newsapiInput.trim()) body.newsapi = newsapiInput.trim();
+    if (Object.keys(body).length === 0) return;
+
+    const res = await fetch("/api/config/connector-keys", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setFinnhub(data.finnhub);
+      setNewsapi(data.newsapi);
+      setFinnhubInput("");
+      setNewsapiInput("");
+      setSaveMessage("Saved.");
+    } else {
+      setSaveMessage(data.error ?? "failed to save");
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3 p-4">
+        <span className="text-sm font-medium">Provider API keys</span>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="settings-sources-finnhub-key">
+            Finnhub{finnhub?.set ? ` (set, ending …${finnhub.last4})` : " (not set)"}
+          </Label>
+          <Input
+            id="settings-sources-finnhub-key"
+            type="password"
+            className="max-w-xs"
+            value={finnhubInput}
+            onChange={(e) => setFinnhubInput(e.target.value)}
+            placeholder={finnhub?.set ? "leave blank to keep current key" : "Finnhub API key"}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="settings-sources-newsapi-key">
+            NewsAPI.org{newsapi?.set ? ` (set, ending …${newsapi.last4})` : " (not set)"}
+          </Label>
+          <Input
+            id="settings-sources-newsapi-key"
+            type="password"
+            className="max-w-xs"
+            value={newsapiInput}
+            onChange={(e) => setNewsapiInput(e.target.value)}
+            placeholder={newsapi?.set ? "leave blank to keep current key" : "NewsAPI.org API key"}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Stored in the database, masked always, excluded from config export/logs — same as the Claude API key.
+          Falls back to FINNHUB_KEY / NEWSAPI_KEY in .env if unset here.
+        </p>
+        <div className="flex items-center gap-3">
+          <Button size="sm" onClick={save}>
+            Save
+          </Button>
+          {saveMessage && <span className="text-sm text-muted-foreground">{saveMessage}</span>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SourceFormDialog({
   trigger,
   initial,
@@ -191,6 +287,8 @@ export default function SourcesSettingsPage() {
         <h1 className="text-xl font-semibold">Sources</h1>
         <SourceFormDialog trigger={<Button>+ Add source</Button>} onSaved={load} />
       </div>
+
+      <ProviderKeysCard />
 
       {sources === null && <p className="text-sm text-muted-foreground">Loading…</p>}
 

@@ -341,6 +341,17 @@ def run_pm_scanning(conn: Connection, *, cycle_id: str) -> dict:
     market_rows = {str(r.id): r for r in _load_markets_by_id(conn, all_ids)}
 
     llm_settings = client.get_llm_settings(conn)
+    # pm_estimate forms an independent P(YES) forecast from question text +
+    # resolution criteria + news + base rates, *before* comparing to the
+    # shown market price (docs/04 §9) - closer in kind to analysis's
+    # per-storyline judgment than to triage's mechanical classification, so
+    # it deserves real reasoning budget, not "off". But unlike digest/
+    # analysis (a handful of calls per cycle), this stage can run once per
+    # candidate market - up to `scan_top_n` (default 20) plus every
+    # news-matched market - so cost multiplies fast with call volume.
+    # Recommendation: "medium" is the right balance here, not "high":
+    # spend the extra reasoning depth on analysis (fewer, higher-stakes
+    # calls) rather than duplicating it across ~20 forecast calls a cycle.
     model, reasoning = llm_settings.tier("pm_estimate")
     today = datetime.now(ZoneInfo("Asia/Bangkok")).strftime("%Y-%m-%d (%A)")
 

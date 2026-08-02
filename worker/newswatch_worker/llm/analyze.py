@@ -222,15 +222,51 @@ def render_storyline_input(storyline: Storyline, primary, corroborating: list) -
     return "\n".join(lines)
 
 
+def _round_robin_by_topic(storylines: list[Storyline]) -> list[Storyline]:
+    """Reorders storylines so the ANALYZING loop below visits every matched
+    topic once before it revisits any topic a second time. `select_storylines`
+    otherwise returns them in arbitrary DB scan order, so a topic that
+    happens to produce many storylines this cycle (or that sorts first)
+    could otherwise burn the whole per-cycle budget/item cap before every
+    other watched topic gets even one analysis - the opposite of "each
+    cycle works on all of them." Storylines matching zero topics
+    ("unconfigured but significant" news, docs/03 §2.6) get their own
+    shared bucket so that class of story stays fairly represented too.
+    A storyline matching >1 topic is bucketed under its lowest topic_id
+    (arbitrary but deterministic) - it's still analyzed exactly once
+    either way; this only affects turn order, not coverage.
+    """
+    buckets: dict[str | None, list[Storyline]] = {}
+    bucket_order: list[str | None] = []
+    for storyline in storylines:
+        key = min(storyline.matched_topic_ids) if storyline.matched_topic_ids else None
+        if key not in buckets:
+            buckets[key] = []
+            bucket_order.append(key)
+        buckets[key].append(storyline)
+
+    ordered: list[Storyline] = []
+    while any(buckets[key] for key in bucket_order):
+        for key in bucket_order:
+            if buckets[key]:
+                ordered.append(buckets[key].pop(0))
+    return ordered
+
+
 def run_analysis(conn: Connection, *, cycle_id: str) -> dict:
     llm_settings = client.get_llm_settings(conn)
+    # Reasoning here should sit above triage's: each call judges direction,
+    # magnitude, and confidence for a single storyline from real prose, not
+    # a mechanical classification - that's genuine per-story judgment worth
+    # spending thinking budget on. Still bounded cost-wise because this
+    # runs once per storyline (a handful per cycle), not once per raw item.
     model, reasoning = llm_settings.tier("analysis")
 
     watch_context, topics = build_watch_context(conn)
     id_map = short_id_map(topics)
     valid_topic_ids = {t.id for t in topics}
 
-    storylines = select_storylines(conn)
+    storylines = _round_robin_by_topic(select_storylines(conn))
     stats = {
         "analysis_storylines": len(storylines),
         "analysis_succeeded": 0,

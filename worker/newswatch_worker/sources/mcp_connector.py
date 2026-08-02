@@ -94,16 +94,23 @@ def _render_args(template: Any, topic_keywords: str) -> Any:
     return template
 
 
-def _auth_headers(source: SourceConfig) -> dict[str, str]:
-    env_var = source.config.get("auth_env_var")
-    token = os.environ.get(env_var) if env_var else None
-    return {"Authorization": f"Bearer {token}"} if token else {}
+def _auth_headers(source: SourceConfig, secret: str | None) -> dict[str, str]:
+    # `secret` is the DB-first-then-env resolved token (ingest.py /
+    # source_tests.py, docs/02 §9 override); falling back to reading
+    # config.auth_env_var directly here keeps direct-call callers (tests,
+    # anything not going through that resolution) working unchanged.
+    if secret is None:
+        env_var = source.config.get("auth_env_var")
+        secret = os.environ.get(env_var) if env_var else None
+    return {"Authorization": f"Bearer {secret}"} if secret else {}
 
 
-async def _with_session(source: SourceConfig, fn: Callable[[mcp.ClientSession], Awaitable[T]]) -> T:
+async def _with_session(
+    source: SourceConfig, fn: Callable[[mcp.ClientSession], Awaitable[T]], *, secret: str | None = None
+) -> T:
     server_url = source.config["server_url"]
     client = httpx2.AsyncClient(
-        headers=_auth_headers(source), timeout=httpx2.Timeout(CALL_TIMEOUT_SECONDS)
+        headers=_auth_headers(source, secret), timeout=httpx2.Timeout(CALL_TIMEOUT_SECONDS)
     )
     async with streamable_http_client(server_url, http_client=client) as (read, write):
         async with mcp.ClientSession(read, write) as session:
@@ -149,7 +156,9 @@ def _map_result_items(payload: dict[str, Any], result_mapping: dict[str, str]) -
     return items
 
 
-async def _fetch_async(source: SourceConfig, topics: list[dict[str, Any]]) -> list[RawItem]:
+async def _fetch_async(
+    source: SourceConfig, topics: list[dict[str, Any]], *, secret: str | None = None
+) -> list[RawItem]:
     tool_name = source.config["tool_name"]
     args_template = source.config["args_template"]
     result_mapping = source.config["result_mapping"]
@@ -179,10 +188,10 @@ async def _fetch_async(source: SourceConfig, topics: list[dict[str, Any]]) -> li
             items.extend(_map_result_items(payload, result_mapping))
         return items
 
-    return await _with_session(source, run)
+    return await _with_session(source, run, secret=secret)
 
 
-async def _test_async(source: SourceConfig) -> TestResult:
+async def _test_async(source: SourceConfig, *, secret: str | None = None) -> TestResult:
     tool_name = source.config["tool_name"]
 
     async def run(session: mcp.ClientSession) -> TestResult:
@@ -200,7 +209,7 @@ async def _test_async(source: SourceConfig) -> TestResult:
         items = _map_result_items(payload, source.config["result_mapping"])
         return TestResult(ok=True, item_count=len(items), sample_titles=[i.title for i in items[:3]])
 
-    return await _with_session(source, run)
+    return await _with_session(source, run, secret=secret)
 
 
 def _unwrap_exception_group(exc: BaseException) -> BaseException:
@@ -223,16 +232,17 @@ class McpConnectorAdapter:
         since: datetime,
         *,
         topics: list[dict[str, Any]] | None = None,
+        secret: str | None = None,
     ) -> list[RawItem]:
         try:
-            items = asyncio.run(_fetch_async(source, topics or []))
+            items = asyncio.run(_fetch_async(source, topics or [], secret=secret))
         except BaseExceptionGroup as exc:
             raise _unwrap_exception_group(exc) from exc
         return [i for i in items if i.url and (i.published_at is None or i.published_at >= since)]
 
-    def test(self, source: SourceConfig) -> TestResult:
+    def test(self, source: SourceConfig, *, secret: str | None = None) -> TestResult:
         try:
-            return asyncio.run(_test_async(source))
+            return asyncio.run(_test_async(source, secret=secret))
         except BaseExceptionGroup as exc:
             return TestResult(ok=False, error=str(_unwrap_exception_group(exc)))
         except Exception as exc:  # noqa: BLE001

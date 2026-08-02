@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import { jsonError } from "@/lib/api-helpers";
 import { prisma } from "@/lib/prisma";
+import { deleteSecret, mcpConnectorSecretKey, upsertSecret } from "@/lib/secrets";
 import { validateSource } from "@/lib/settings";
 
 interface PatchSourceBody {
@@ -12,9 +13,13 @@ interface PatchSourceBody {
   enabled?: boolean;
   pollOverrideMinutes?: number | null;
   language?: string;
+  authToken?: string;
 }
 
-// PATCH /api/config/sources/:id (FR-C1).
+// PATCH /api/config/sources/:id (FR-C1). `authToken` (docs/02 §9 override,
+// 2026-08-02): only meaningful for source_type='mcp' rows - rotates that
+// connector's DB-stored credential (lib/secrets.ts's mcpConnectorSecretKey),
+// mirroring the Claude key's rotate flow. Harmless no-op for other types.
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   let body: PatchSourceBody;
   try {
@@ -38,6 +43,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (body.pollOverrideMinutes !== undefined) data.pollOverrideMinutes = body.pollOverrideMinutes;
   if (body.language !== undefined) data.language = body.language;
 
+  if (body.authToken?.trim()) {
+    await upsertSecret(mcpConnectorSecretKey(params.id), body.authToken);
+  }
+
   try {
     const source = await prisma.source.update({ where: { id: params.id }, data });
     return NextResponse.json(source);
@@ -56,6 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await prisma.source.delete({ where: { id: params.id } });
+    await deleteSecret(mcpConnectorSecretKey(params.id));
     return NextResponse.json({ deleted: true });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
