@@ -114,9 +114,9 @@ make backup        # pg_dump + config export → ./backups/
   ticker path (bogus symbol) marks 'unavailable' after 3 attempts; a backdated PM opportunity gets
   price_1d populated.
 
-### Phase 8 (proposed, not approved yet) — ETH & DeFi Inflow Radar
-- Spec and phase breakdown (D1–D5) in `docs/06-defi-inflow-module.md`; build only after the
-  §11 decisions there are answered.
+### Phase 8 (approved 2026-10-04, decisions 1–5 locked) — ETH & DeFi Inflow Radar
+- Spec and phase breakdown (D1–D5) in `docs/06-defi-inflow-module.md`. Telegram notify, Ethereum + L2s
+  (Arbitrum, Base, Robinhood Chain), QNT pinned, Bigdata.com MCP on from day one; §11 lists what is still open.
 
 ### Phase 7 — Hardening & polish
 - Crash-resume test matrix (kill at each cycle state), structured logging, `make backup`,
