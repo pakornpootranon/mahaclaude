@@ -115,7 +115,7 @@ make backup        # pg_dump + config export → ./backups/
   price_1d populated.
 
 ### Phase 8 (approved 2026-10-04, decisions 1–5 locked) — ETH & DeFi Inflow Radar
-- Spec and phase breakdown (D1–D5) in `docs/06-defi-inflow-module.md`. daily Claude Routine live (Telegram deferred), Ethereum + L2s
+- Spec and phase breakdown (D1–D5) in `docs/06-defi-inflow-module.md`. daily scan via claude.ai chat schedule (Routine disabled, Telegram deferred), Ethereum + L2s
   (Arbitrum, Base, Robinhood Chain), QNT pinned, Bigdata.com MCP on from day one; §11 lists what is still open.
 
 ### Phase 7 — Hardening & polish

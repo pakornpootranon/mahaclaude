@@ -464,7 +464,12 @@ session that runs the daily scan and delivers the result into the Claude app, wi
 notification and an email on completion (the same pattern as the user's existing BMNR weekly,
 macro-watch and chip-screener Routines).
 
-**Live today (created 2026-10-04):** Routine *"DeFi Inflow Radar daily"*, cron
+**Status 2026-10-04 (later the same day):** the Routine was created, test-fired once, and then
+**disabled** by user decision: Routine configuration (repo sources, connectors, network allow-list
+are three separate UI surfaces) was judged too fiddly. The daily scan now runs as a **claude.ai
+chat scheduled task** with the same prompt (Bigdata.com + web search; no repo access, so the
+Obsidian vault is filled manually from the chat output until the worker exists). The Routine
+*"DeFi Inflow Radar daily"* remains stored, disabled, for reuse: cron
 `CRON_TZ=Asia/Bangkok 24 12 * * *` (12:24 Bangkok, just after the DefiLlama UTC-day close and the
 US ETF-flow wires land), fresh session per fire, Bigdata.com connector attached, push + email on.
 Until Phases D1–D4 exist, the Routine *is* the module: Claude performs the §0 collection and
