@@ -23,6 +23,7 @@ Thai SET, global. User timezone: Asia/Bangkok.
 | `docs/03-data-model.md` | Canonical Postgres schema (Prisma owns migrations) |
 | `docs/04-llm-pipeline.md` | Exact prompts, JSON schemas, rules engine, cost controls |
 | `docs/05-config-schema.md` | Settings JSON schemas + full seed config |
+| `docs/06-defi-inflow-module.md` | **Proposal (not built):** ETH & DeFi Inflow Radar — daily on-chain/ETF inflow signals + Telegram notify |
 
 When spec and convenience conflict, follow the spec; if the spec is wrong/impossible, say so and
 propose the fix in the PR/commit message rather than silently diverging.
@@ -112,6 +113,10 @@ make backup        # pg_dump + config export → ./backups/
 - ✅ Verify: backdate a fake recommendation, run outcomes job, returns + hit flags populate; unavailable
   ticker path (bogus symbol) marks 'unavailable' after 3 attempts; a backdated PM opportunity gets
   price_1d populated.
+
+### Phase 8 (proposed, not approved yet) — ETH & DeFi Inflow Radar
+- Spec and phase breakdown (D1–D5) in `docs/06-defi-inflow-module.md`; build only after the
+  §11 decisions there are answered.
 
 ### Phase 7 — Hardening & polish
 - Crash-resume test matrix (kill at each cycle state), structured logging, `make backup`,
