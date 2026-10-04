@@ -23,7 +23,7 @@ Thai SET, global. User timezone: Asia/Bangkok.
 | `docs/03-data-model.md` | Canonical Postgres schema (Prisma owns migrations) |
 | `docs/04-llm-pipeline.md` | Exact prompts, JSON schemas, rules engine, cost controls |
 | `docs/05-config-schema.md` | Settings JSON schemas + full seed config |
-| `docs/06-defi-inflow-module.md` | **Proposal (not built):** ETH & DeFi Inflow Radar — daily on-chain/ETF inflow signals + Telegram notify |
+| `docs/06-defi-inflow-module.md` | **Proposal (not built):** ETH & DeFi Inflow Radar — daily on-chain/ETF inflow signals via DefiLlama + Bigdata.com MCP, Telegram notify |
 
 When spec and convenience conflict, follow the spec; if the spec is wrong/impossible, say so and
 propose the fix in the PR/commit message rather than silently diverging.

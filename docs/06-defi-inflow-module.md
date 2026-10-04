@@ -18,7 +18,8 @@ own trailing 90-day history, then combined by deterministic rules.
 
 | Target | Inflow proxy (daily series) | Why it matters | Source (free) |
 |---|---|---|---|
-| ETH | US spot ETH ETF **net flows** (USD m, by fund + total) | TradFi allocation; the single cleanest "new money" signal | Farside Investors page (HTML table) / SoSoValue as fallback |
+| ETH | US spot ETH ETF **net flows** (USD m, by fund + total) | TradFi allocation; the single cleanest "new money" signal | **Bigdata.com** MCP: MT Newswires' daily "US-Traded Ether ETFs …" wire (SoSoValue figures, per-fund breakdown) — see §2b; Farside HTML page as fallback |
+| Both | **Media sentiment & attention** per asset (score, momentum, 1-mo / 1-qt attention z-scores) | Crowdedness check: inflow with *flat* attention is stealth; inflow with spiking attention is late | **Bigdata.com** `bigdata_sentiment_tearsheet` per resolved entity — see §2b |
 | ETH | **Exchange net flow** (ETH leaving exchanges = accumulation) | Spot buyers withdrawing to custody / staking | Coin Metrics Community API, daily `FlowInExNtv` / `FlowOutExNtv` (verify metric names on community tier at build time) |
 | ETH | **Stablecoin supply on Ethereum** (7d / 30d change) | Dry powder parked on-chain before deployment | DefiLlama `stablecoins.llama.fi/stablecoincharts/Ethereum` |
 | ETH | **Ethereum chain TVL** in USD *and* in ETH terms | TVL/ETH-price strips the price effect; rising ETH-denominated TVL = real deposits | DefiLlama `api.llama.fi/v2/historicalChainTvl/Ethereum` + ETH price |
@@ -27,7 +28,7 @@ own trailing 90-day history, then combined by deterministic rules.
 | DeFi token | **Fees & revenue** 7d change | Usage-driven, "real yield" inflow — harder to fake than TVL | DefiLlama `/overview/fees/ethereum` |
 | DeFi token | **DEX volume** 7d change (DEX protocols only) | Activity confirmation | DefiLlama `/overview/dexs/ethereum` |
 | DeFi token | **Token price, volume, market cap**; derived **MCap/TVL** | Spot demand + valuation vs. the capital it secures | CoinGecko Demo API `/coins/markets?category=decentralized-finance-defi` |
-| Both | **News storylines** already analyzed by the dashboard | Catalyst attribution (upgrades, listings, treasury buys, regulation) | Existing pipeline — one new seeded watch topic |
+| Both | **News storylines** already analyzed by the dashboard | Catalyst attribution (upgrades, listings, treasury buys, regulation) | Existing pipeline — one new seeded watch topic; the seeded **Bigdata.com** MCP connector (enabled) adds premium crypto wires (MT Newswires Crypto, Benzinga, Crypto Wire, Crypto Briefing) the RSS seeds don't carry |
 
 Signal classes the rules engine can emit (each with a full `rule_trace`, like `rules.py` and
 `polymarket/scan.py`):
@@ -37,7 +38,8 @@ Signal classes the rules engine can emit (each with a full `rule_trace`, like `r
 | `ETH_INFLOW` | ≥ 2 of {ETF 5d sum z ≥ 1.5, exchange netflow 7d z ≤ −1.5, stablecoin 7d Δ ≥ +2 %, ETH-TVL 7d z ≥ 1.0} | Broad money flowing into ETH |
 | `ETF_STREAK` | ≥ 5 consecutive positive ETF days **and** 5d sum ≥ configurable USD floor | Institutional bid is persistent |
 | `PROTOCOL_INFLOW` | TVL 7d Δ ≥ +15 % **and** (fees 7d Δ ≥ +20 % **or** volume 7d Δ ≥ +30 %) **and** TVL ≥ floor | Capital + usage arriving together |
-| `STEALTH_INFLOW` | TVL 7d Δ ≥ +15 % **and** token price 7d Δ ≤ +5 % **and** MCap/TVL below its own 90d median | Money entering before the token reprices — the "early" signal |
+| `STEALTH_INFLOW` | TVL 7d Δ ≥ +15 % **and** token price 7d Δ ≤ +5 % **and** MCap/TVL below its own 90d median **and** (when available) media-attention 1-mo z ≤ 0.5 | Money entering before the token reprices *and before the press notices* — the "early" signal |
+| `CROWDED` (informational, never notified) | Any inflow class fired **and** media-attention 1-mo z ≥ 1.5 **and** price 7d Δ ≥ +20 % | Inflow is real but late and widely covered — shown on the card as a caution, not a flag |
 | `ROTATION` | Protocol's share of Ethereum DeFi TVL rises ≥ 1.0 pt in 7d | Capital rotating *within* DeFi toward this protocol |
 
 **What the LLM does and does not do (same boundary as everywhere else in this repo):** the LLM
@@ -80,7 +82,9 @@ worker/newswatch_worker/
 │   │   ├── defillama.py   # protocols, chain TVL, stablecoins, fees, dex volumes
 │   │   ├── coingecko.py   # prices / volume / mcap for ETH + universe tokens
 │   │   ├── coinmetrics.py # ETH exchange flows (community API)
-│   │   └── etf_flows.py   # Farside HTML table parser (+ SoSoValue fallback)
+│   │   ├── bigdata.py     # MCP client (reuses sources/mcp_connector.py session code):
+│   │   │                  #   ETF-flow wire extraction + sentiment/attention tearsheets + entity resolution
+│   │   └── etf_flows.py   # Farside HTML table parser — FALLBACK only when bigdata.py has no wire for a day
 │   ├── features.py        # z-scores, deltas, MCap/TVL, TVL-in-ETH, share-of-chain
 │   ├── rules.py           # deterministic signal rules → rule_trace (NO LLM)
 │   └── scan.py            # DEFI_SCANNING stage orchestrator
@@ -106,6 +110,36 @@ previous day's partial point and skip; that is the intended behavior, not a bug.
 Why a stage and not a separate APScheduler job: it keeps "run cycle now" meaningful for this
 module too, keeps the digest able to carry a DeFi strip, and reuses crash-resume for free.
 
+## 2b. Bigdata.com integration (verified live in the planning session, 2026-10-04)
+
+The repo already ships a generic MCP connector adapter (arch §4b) and a seeded, disabled
+[Bigdata.com](https://bigdata.com) source. This module uses the same server for **four** jobs, all
+through the one connector token (`secrets["mcp_connector_token:{source_id}"]`), so enabling the
+connector in Settings → MCP Connectors turns all four on. Each job is also individually
+switchable in `settings['defi'].bigdata` (§4) because every call consumes Bigdata.com credits.
+
+| Job | Tool | What was verified | Role in this module |
+|---|---|---|---|
+| **B1 — ETF flow series** | `bigdata_search` (fast mode: `keyword.any_of=["Ether ETFs"]` in HEADLINE, `category=news`, 14-day timestamp window) | Returned one **MT Newswires – Crypto** wire per US trading day, e.g. *"US-Traded Ether ETFs Post $55 Million in Net Outflows on Thursday"*, body: *"combined net outflows of $55.4 million on Thursday, according to … SoSoValue. Fidelity Ethereum Fund (FETH) led the outflows with $23.5 million, followed by …"*. 10 consecutive trading days came back in one call. | **Primary source** for `etf_netflow_usd` (total) and per-fund rows (`etf_netflow_usd:ETHA`, `:FETH`, `:ETHE`, …). Extraction is **regex-first** (`combined net (in|out)flows of \$([\d.]+) (million|billion)` + the `TICKER) … with $X million` pattern), with a `haiku`-tier structured-output call only when the regex fails on a wire. The published wire date is "yesterday's" US session: the day is taken from the body ("on Thursday") relative to the wire timestamp, not from the timestamp itself. Farside parser runs only for days with no wire. |
+| **B2 — Entity resolution** | `find_securities` / `find_entities` | `Aave` → **`C49D02`** (Aave Sagl, owner of the AAVE token — resolved by the smart-search audit); `ETHA` → **`S67GK5`** (iShares Ethereum Trust ETF); `Uniswap` resolves to its European ETPs (`6V01KF`, `PWOWL1`), not to Uniswap Labs; `Ethereum` does **not** resolve as a `product` entity. | `defi_assets.bigdata_entity_id` (nullable). Resolved once at universe-build time, user-overridable in Settings. Assets without an entity fall back to keyword filters on `symbol` + `name`. |
+| **B3 — Sentiment & media attention** | `bigdata_sentiment_tearsheet(rp_entity_id)` | For `C49D02`: `sentiment {current 0.06, baseline −0.08, momentum 0.14, zscore_1mo 0.51, zscore_1qt 0.69}`, `media_attention {momentum_pct −14.0, zscore_1mo 0.02, zscore_1qt 0.94}`, `document_count 83`, plus a cited narrative. | Daily metrics `media_sentiment`, `media_sentiment_z1m`, `media_attention_z1m`, `media_attention_z1q` → the `STEALTH_INFLOW` attention gate and the `CROWDED` caution (§0). Called only for assets with an entity **and** in the top `bigdata.tearsheet_top_n` (default 15) by provisional inflow score, so cost scales with signal, not universe size. |
+| **B4 — Narrative evidence for `defi_brief`** | `bigdata_search` (fast mode: `entity.any_of=[id]` or keyword fallback, `category=news`, 7-day window, `max_chunks 8`) | Aave query returned dated, sourced chunks: V4 deposits crossing $1 B, TVL +13.7 % to $27.4 B, the DAO buyback, the MiCA yield-ban dispute, a third-party adapter exploit — i.e. exactly the catalyst *and* invalidation material the brief needs. | Chunks are passed to `defi-brief-v1` alongside the dashboard's own storylines; each cited chunk is stored in `defi_signals.brief.evidence[]` with `source`, `timestamp`, `url` so the card can link out. Only for flagged signals (1–5/day). |
+
+Also available but **not** used in v1: `bigdata_events_calendar` (earnings dates for COIN /
+BMNR as catalyst context — fits a later "catalyst calendar" strip), `bigdata_screen_companies`
+(no crypto-token universe), and the open-web lane (not needed; indexed news covers it).
+
+**Cost envelope** (from the live calls' `metadata.usage`): a 10-chunk search ≈ 1–2 k
+`premium_news_tokens`; a tearsheet is a single call. Daily: 1 search (B1) + ≤ 15 tearsheets (B3) +
+≤ 5 searches (B4) + the connector's own `max_calls_per_cycle` news pulls. Each job's daily cap
+lives in settings and the stage records `bigdata_calls` / `bigdata_tokens` in `cycles.stats` so
+the health strip shows spend.
+
+**Why this is better than scraping for B1:** a wire service with a fixed sentence template is far
+more stable than a web page's HTML, carries the per-fund breakdown, is dated, and comes through
+the connector the repo already has. The remaining fragility is template drift in the MT Newswires
+copy, which the regex-then-LLM fallback absorbs; the Farside parser remains as a second fallback.
+
 ---
 
 ## 3. Data model additions (03 — new §2.16–§2.20, Prisma owns migrations)
@@ -120,6 +154,7 @@ CREATE TABLE defi_assets (
   name            text NOT NULL,
   category        text,                         -- DefiLlama category: Lending, Dexes, Liquid Staking, ...
   coingecko_id    text,                         -- for price series
+  bigdata_entity_id text,                       -- RavenPack rp_entity_id (§2b B2), NULL = keyword fallback
   yfinance_symbol text,                         -- 'ETH-USD','AAVE-USD' — reuses outcomes job (arch §7)
   chains          text[] NOT NULL DEFAULT '{}',
   pinned          boolean NOT NULL DEFAULT false,   -- user said "always track"
@@ -133,11 +168,12 @@ CREATE TABLE defi_assets (
 CREATE TABLE defi_metrics_daily (
   asset_id    uuid NOT NULL REFERENCES defi_assets(id) ON DELETE CASCADE,
   metric      text NOT NULL,     -- 'tvl_usd','tvl_eth','fees_usd','dex_volume_usd','price_usd','volume_usd',
-                                 -- 'mcap_usd','etf_netflow_usd','exchange_netflow_eth','stablecoin_supply_usd',
-                                 -- 'chain_tvl_share_pct'
+                                 -- 'mcap_usd','etf_netflow_usd','etf_netflow_usd:<FUND>','exchange_netflow_eth',
+                                 -- 'stablecoin_supply_usd','chain_tvl_share_pct',
+                                 -- 'media_sentiment','media_sentiment_z1m','media_attention_z1m','media_attention_z1q'
   day         date NOT NULL,     -- UTC day the point describes
   value       numeric NOT NULL,
-  source      text NOT NULL,     -- 'defillama','coingecko','coinmetrics','farside'
+  source      text NOT NULL,     -- 'defillama','coingecko','coinmetrics','bigdata','farside'
   fetched_at  timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (asset_id, metric, day)             -- the dedupe key; collectors upsert on it
 );
@@ -232,7 +268,15 @@ from export.
   },
   "dedup_window_hours": { "default": 72, "ETF_STREAK": 24 },
   "max_signals_per_day": 8,
-  "brief_enabled": true
+  "brief_enabled": true,
+  "bigdata": {
+    "etf_flows": true,
+    "entity_resolution": true,
+    "tearsheets": true,
+    "tearsheet_top_n": 15,
+    "brief_evidence": true,
+    "max_calls_per_day": 30
+  }
 }
 ```
 
@@ -241,7 +285,11 @@ from export.
 - `universe.mode`: `"auto"` = all DefiLlama protocols with `Ethereum` in `chains`, a real token
   `symbol`, TVL ≥ `min_tvl_usd`, category not excluded, capped at `max_assets` by TVL — plus
   anything `pinned`, minus anything `excluded`. `"curated"` = `pinned` rows only.
-- `settings['llm'].tiers` gains `"defi_brief": { "model": "<sonnet id>", "reasoning": "low" }`.
+- `bigdata.*`: each §2b job is independently switchable; all four are no-ops when the seeded
+  Bigdata.com connector row is disabled or has no token (never dialed — same FR-I6 guarantee as
+  ingestion). `max_calls_per_day` is a hard cap across all four jobs.
+- `settings['llm'].tiers` gains `"defi_brief": { "model": "<sonnet id>", "reasoning": "low" }`
+  and `"defi_extract": { "model": "<haiku id>", "reasoning": "off" }` (B1 regex fallback only).
 - `settings['notifications']` (new key, 05 §3d):
 
 ```json
@@ -270,7 +318,10 @@ with whatever series are fresh (rule_trace records `missing_inputs`).
 | DefiLlama `/overview/fees/ethereum`, `/overview/dexs/ethereum` | 2 | per-protocol `change_7d` included |
 | CoinGecko `/coins/markets?category=…` + `/coins/ethereum` | 2–4 | Demo tier: 10k/month, 100/min |
 | Coin Metrics community `asset-metrics` (eth, daily) | 1 | 1,000 req / 10 min per IP |
-| Farside ETH ETF page | 1 | HTML parse; brittle by nature — see §9 risks |
+| Bigdata.com B1 ETF-flow wire search | 1 | one 14-day-window call returns every trading day's wire |
+| Bigdata.com B3 tearsheets | ≤ 15 | top-N by provisional score only |
+| Bigdata.com B4 brief evidence | ≤ 5 | flagged signals only |
+| Farside ETH ETF page | 0–1 | fallback only for a day with no wire — see §9 risks |
 
 **Backfill:** first run pulls `backfill_days` of history where the source offers it (DefiLlama
 chain TVL / stablecoins / `protocol/{slug}` history, Coin Metrics daily, CoinGecko
@@ -286,15 +337,17 @@ refuses to score until ≥ 30 days exist per metric (`rule_trace.insufficient_hi
 ## 6. LLM: `defi-brief-v1` (04 — new §12)
 
 Called **only** for signals that already passed the rules. Input: asset, signal class, features
-table, rule_trace, and up to 5 storyline summaries from `analyses` whose `analysis_topics` match
+table, rule_trace, up to 5 storyline summaries from `analyses` whose `analysis_topics` match
 the seeded "Ethereum & DeFi" topic or whose `result.tickers` mention the asset symbol (reuse
-`polymarket/match.py`'s matching approach). Output JSON (structured-output enforced, repair retry,
+`polymarket/match.py`'s matching approach), and up to 8 dated Bigdata.com evidence chunks
+(§2b B4) when the connector is enabled. Output JSON (structured-output enforced, repair retry,
 budget guard — all via the existing `llm/client.py`):
 
 ```json
 {
   "summary": "2–3 sentences: what the inflow data shows, in plain language",
   "catalysts": [{"story_key": "...", "relevance": "high|medium|low", "note": "..."}],
+  "evidence": [{"source": "MT Newswires - Crypto", "timestamp": "...", "url": "...", "quote": "..."}],
   "inflow_type": "institutional|onchain_organic|incentive_driven|unclear",
   "invalidation": "what would make this a false positive (e.g. TVL from a points program ending)",
   "confidence": 0.0
@@ -376,12 +429,14 @@ ledger guarantees at-most-once even if the cycle re-runs. Worker-side only; `web
 
 | Risk | Mitigation |
 |---|---|
-| **Farside is an HTML page, not an API** — layout changes break the parser | Parser is one function with a fixture test; on parse failure the ETF series is marked stale and `ETH_INFLOW` rules run without it (recorded in `rule_trace.missing_inputs`); SoSoValue scrape as fallback; manual CSV import as last resort |
+| **ETF-flow wire template drift** (MT Newswires rewords the daily item) | Regex-first, `haiku` structured extraction second, Farside HTML parser third; a day with no value from any path is recorded as missing and `ETH_INFLOW` runs on the other inputs (`rule_trace.missing_inputs`) |
+| **Bigdata.com credits / connector disabled** | Every B1–B4 job is optional; the module degrades to DefiLlama + CoinGecko + Coin Metrics + Farside with attention gates skipped (trace says so). Daily call cap in settings; spend shown in the health strip |
+| **Entity gaps** (Ethereum has no product entity; Uniswap resolves to ETPs, not the protocol) | `bigdata_entity_id` is nullable and user-editable; keyword fallback on symbol + name for search; tearsheets simply unavailable for unresolved assets |
 | Coin Metrics community tier may not expose the exact exchange-flow metric names | Verify at build start; fallback is to drop exchange flow from v1 and keep the other three ETH inputs |
 | TVL inflow from incentive programs (points, emissions) looks like real inflow | `STEALTH_INFLOW` requires MCap/TVL below median; brief classifies `incentive_driven`; History tab will show whether those flags underperform so the user can raise thresholds |
 | 90-day z-scores in a trending market fire constantly | `max_signals_per_day` cap, 72 h dedupe window, and the preview tool to tune before enabling notifications |
 | CoinGecko Demo key quota | ~5 calls/day ≈ 150/month of a 10,000 cap — fine; fail closed if 429 |
-| This repo's sandbox cannot reach these APIs | All endpoint shapes above were confirmed from documentation/search only; the build must start with a `make defi-probe` that hits each endpoint from the user's machine and prints the field names |
+| This repo's sandbox cannot reach the REST APIs | DefiLlama / CoinGecko / Coin Metrics shapes were confirmed from documentation only; **Bigdata.com was exercised live** (§2b). The build must start with a `make defi-probe` that hits each REST endpoint from the user's machine and prints the field names |
 
 ---
 
@@ -390,22 +445,28 @@ ledger guarantees at-most-once even if the cycle re-runs. Worker-side only; `web
 ### Phase D1 — Data layer & collectors
 - Prisma migration for §3 tables; `settings['defi']` + `settings['notifications']` seeds; seeded
   "Ethereum & DeFi" topic + mappings; `defi_brief` tier added to `settings['llm']`.
-- `defi/universe.py`, four collectors, `features.py`; CLI `newswatch defi-collect [--backfill]`
-  and `newswatch defi-probe`.
+- `defi/universe.py`, five collectors (incl. `bigdata.py` B1 + B2), `features.py`; CLI
+  `newswatch defi-collect [--backfill]` and `newswatch defi-probe`; enable the seeded Bigdata.com
+  connector with the user's token.
 - ✅ Verify: probe prints live field names from each source on the user's machine; backfill
-  populates ≥ 30 days for every metric for ETH and ≥ 20 protocols; re-running collect inserts 0 new
-  rows (`SELECT count(*)` unchanged); killing mid-collect then re-running is clean.
+  populates ≥ 30 days for every metric for ETH and ≥ 20 protocols; B1 wire extraction reproduces
+  the 10 known September 2026 daily totals from §2b (fixture test) and the extracted series
+  matches Farside's totals for the overlap days within rounding; re-running collect inserts 0 new
+  rows (`SELECT count(*)` unchanged); killing mid-collect then re-running is clean; with the
+  connector disabled, zero Bigdata.com calls appear in logs.
 
 ### Phase D2 — Rules engine & cycle stage
 - `defi/rules.py` + `defi/scan.py`; `DEFI_SCANNING` state wired into `cycle.py` and `--dry`;
-  `dedupe.py` gains `defi_signal_dedupe_key`.
+  `dedupe.py` gains `defi_signal_dedupe_key`; B3 tearsheets collected for the provisional top-N
+  before the attention-gated rules run.
 - Unit tests per rule on synthetic series; "what would have fired" runner over the backfilled 90 d.
 - ✅ Verify: a full cycle produces `defi_signals` rows with complete `rule_trace`; disabling
   `settings['defi'].enabled` skips the stage; two cycles on the same data day produce no new rows.
 
 ### Phase D3 — LLM brief, news linkage, Telegram
 - `llm/defi_brief.py` (`defi-brief-v1`), fixtures, `make eval` extended; signal ↔ analysis
-  matching; `notify/telegram.py` + `notifications` ledger + secrets wiring.
+  matching plus B4 Bigdata.com evidence chunks; `notify/telegram.py` + `notifications` ledger +
+  secrets wiring.
 - ✅ Verify: a flagged signal arrives on the phone within the cycle with a working deep link;
   re-running the cycle sends nothing twice; bogus bot token surfaces in the health strip; set
   `monthly_budget_usd=0.01` → signals still fire, cards show "brief unavailable (budget)".
@@ -435,5 +496,8 @@ Rough effort: D1 and D2 are the substance (one focused session each); D3–D5 on
 3. **Include ETH L2 ecosystem tokens** (ARB, OP) now, or keep strictly Ethereum mainnet (default)?
 4. **Also notify on stock recommendations** from the existing pipeline, or DeFi signals only
    (default: DeFi only)?
-5. **Paid data later?** If the free ETF-flow scrape proves too brittle, CoinGlass or a Dune query
-   are the paid upgrades; agree now that v1 stays free-only.
+5. **Bigdata.com credit budget:** B1–B4 together are ≤ ~30 calls/day. Confirm the token you will
+   use for the connector and whether all four jobs should be on from day one (recommended) or
+   just B1 (ETF flows) + B4 (brief evidence) to start.
+6. **Paid data beyond that?** CoinGlass or a Dune query are the upgrades for exchange-flow depth;
+   agree now that v1 adds no paid source beyond the Bigdata.com credits already in hand.
