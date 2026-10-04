@@ -332,8 +332,10 @@ from export.
 
 ```json
 {
+  "channel": "routine",
   "telegram": { "enabled": false, "chat_id": "", "quiet_hours_bangkok": ["23:00", "07:00"],
                 "daily_heartbeat": true },
+  "email":    { "enabled": false, "to": "" },
   "send": { "defi_signals": true, "recommendations": true, "recommendations_min_confidence": 0.6,
             "digest_summary": false }
 }
@@ -454,26 +456,53 @@ API routes: `GET /api/defi/overview`, `GET /api/defi/signals?class=&asset=&curso
 
 ---
 
-## 8. Notifications — Telegram (decided 2026-10-04)
+## 8. Notifications — scheduled Claude Routine first, Telegram deferred (revised 2026-10-04)
 
-The user's ask is explicitly "be notified." The architecture already left the hook (arch §11:
-"a notifier service tails the table"). Channel: **Telegram bot** — free, phone-native, one HTTPS
-call, no webhook or public endpoint needed (the worker only *sends*). LINE Notify was
-discontinued in 2025 and the LINE Messaging API needs a channel + webhook, so it is not used.
+The user's ask is explicitly "be notified daily." Telegram was the first choice but BotFather
+failed to create the bot, so the channel for now is a **Claude Code Routine**: a scheduled cloud
+session that runs the daily scan and delivers the result into the Claude app, with a push
+notification and an email on completion (the same pattern as the user's existing BMNR weekly,
+macro-watch and chip-screener Routines).
 
-**How the ping reaches you (one-time setup, ~2 minutes, done once in Settings → Notifications):**
+**Live today (created 2026-10-04):** Routine *"DeFi Inflow Radar daily"*, cron
+`CRON_TZ=Asia/Bangkok 24 12 * * *` (12:24 Bangkok, just after the DefiLlama UTC-day close and the
+US ETF-flow wires land), fresh session per fire, Bigdata.com connector attached, push + email on.
+Until Phases D1–D4 exist, the Routine *is* the module: Claude performs the §0 collection and
+applies the §0 thresholds by hand each day, using the Bigdata.com jobs in §2b (ETF-flow wire
+extraction, entity news, sentiment tearsheets) plus DefiLlama/CoinGecko where the cloud
+environment's network policy allows them. Its prompt mirrors §0–§2b and this doc is its source
+of truth; when thresholds change here, update the Routine's prompt (`update_trigger`).
 
-1. In Telegram, open **@BotFather** → `/newbot` → pick a name and a username. BotFather replies
-   with a **bot token** (`123456789:AAH…`). Paste it into Settings → Notifications → Bot token
-   (stored in `secrets.telegram_bot_token`, masked, env fallback `TELEGRAM_BOT_TOKEN`).
-2. Open your new bot's chat and send it any message (e.g. "hi"). Bots can only message people
-   who have messaged them first — this is Telegram's anti-spam rule, not ours.
-3. Click **"Detect chat id"** in Settings. The worker calls `getUpdates` on the bot, finds your
-   message, and fills in `chat_id` (a number). You can also paste it manually.
-4. Click **"Send test message"** — you should get *"Mahachai Market Watch connected ✅"* on your
-   phone within a second. The health strip shows `telegram: ok` from then on.
+**Network note for the Routine:** the cloud environment currently denies `api.llama.fi`,
+`stablecoins.llama.fi`, `api.coingecko.com` and `farside.co.uk`. The Routine falls back to
+Bigdata.com wires and web search for those figures and says so in its run log. Allowing those
+hosts in the environment's Network access settings (Custom → Allowed domains) upgrades the daily
+numbers from quoted-in-news to first-party.
 
-**What a ping looks like** (one message per signal, Markdown, sent at the end of
+**Memory: an Obsidian vault, not the knowledge graph (user decision 2026-10-04).** The user's
+Neo4j graph is reserved for the semiconductor work and must not be mixed with crypto. The Routine
+keeps all state in `vault/defi-radar/` — an Obsidian vault committed to the repo on the
+`radar-vault` branch (one daily note, one note per fired signal, one living note per asset; see
+`vault/defi-radar/Radar Home.md` and `Templates/`). Each run starts by reading yesterday's daily
+note so it can say what changed, and ends with a commit + push of the new notes. The user opens
+the folder in Obsidian or pulls the branch with Obsidian Git. When the worker exists (D1+),
+`defi_signals` becomes the source of truth and a small exporter writes the same vault notes from
+Postgres, so the vault keeps working as the human-readable history either way.
+
+**Once the worker exists (D3):** the in-repo notifier becomes the primary channel and the Routine
+is reduced to a reader of `defi_signals` (or retired). Channel options the notifier will support,
+in order of preference:
+
+1. **Telegram bot** — retry BotFather later (`/newbot` from the official @BotFather account; the
+   error was most likely a transient or a username collision, as usernames must end in `bot` and
+   be globally unique). Setup: paste the token into Settings → Notifications (stored in
+   `secrets.telegram_bot_token`, masked, env fallback `TELEGRAM_BOT_TOKEN`), message the bot once,
+   click "Detect chat id", click "Send test message".
+2. **Email** via the user's Gmail connector / SMTP — zero setup, already proven by the other
+   Routines.
+3. **Claude Routine** as above — always available as the fallback.
+
+**Message content** (identical across channels, one message per signal, sent at the end of
 `DEFI_SCANNING`):
 
 ```
@@ -491,18 +520,11 @@ Stock recommendations from the existing pipeline (decision 4) are sent by the sa
 supply shocks · <one-line reasoning> · open →`. Same ledger, same at-most-once guarantee.
 
 Message rules: emoji by class (🟢 inflow classes, 🔵 ETH classes, 🟣 token classes, 🟠 L2 classes,
-📈/📉 stock BUY/SELL, ⚠️ when the `CROWDED` caution applies), max 8 messages/day (`max_signals_per_day`), a daily "no signals
-today" heartbeat at the anchor cycle so silence is distinguishable from a dead worker (toggle),
-quiet hours respected by deferring to the next cycle, Telegram's 4096-char limit enforced by
-truncating the brief, `disable_web_page_preview=true` so links don't bloat the chat.
-
-Mechanics: at the end of `DEFI_SCANNING` (and optionally after `TRIGGERING` for stock
-recommendations, off by default) the notifier selects rows with `notified_at IS NULL`, formats one
-message per signal (asset · class · score · one-line summary · dashboard deep link), respects
-quiet hours by deferring, writes a `notifications` row, then sets `notified_at`. UNIQUE on the
-ledger guarantees at-most-once even if the cycle re-runs. Worker-side only; `web` never sends.
-
----
+📈/📉 stock BUY/SELL, ⚠️ when the `CROWDED` caution applies), max 8 messages/day
+(`max_signals_per_day`), a daily "no signals today" heartbeat at the anchor cycle so silence is
+distinguishable from a dead worker (toggle), quiet hours respected by deferring to the next cycle,
+Telegram's 4096-char limit enforced by truncating the brief, `disable_web_page_preview=true` so
+links don't bloat the chat.
 
 ## 9. Risks & honest caveats
 
@@ -572,7 +594,8 @@ Rough effort: D1 and D2 are the substance (one focused session each); D3–D5 on
 
 **Decided 2026-10-04:**
 
-1. ✅ **Notification channel: Telegram** (§8 has the setup walkthrough).
+1. ✅ **Notification channel: a daily Claude Routine for now** (BotFather failed on 2026-10-04); Telegram
+   or email become the worker-side channel in D3 (§8).
 2. ✅ **Universe: Ethereum ecosystem** — ETH + auto-resolved Ethereum DeFi protocols + pinned
    non-DeFi ERC-20s starting with **QNT**.
 3. ✅ **L2s included as chains: Arbitrum (ARB), Base (proxy COIN), Robinhood Chain (proxies HOOD,
